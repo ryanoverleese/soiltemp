@@ -1,25 +1,27 @@
 // netlify/functions/soil-temp.js
-// Robust IrriMAX Live reader with timezone-safe parsing + debug peek.
+// IrriMAX Live reader with timezone-safe parsing, today stats, and 7/30-day trends.
 // Query:
 //   ?name=LOGGER_NAME        (required)
-//   &depth=4                 (inches; optional; default 4)
+//   &depth=6                 (inches; optional; default 6)
 //   &tz=America/Chicago      (optional; default America/Chicago)
+//   &days=30                 (optional; default 30; how far back to fetch)
 //   &debug=1                 (optional; show header only)
-//   &peek=1                  (optional; returns 6 raw/parsed timestamps to diagnose)
+//   &peek=1                  (optional; returns sample parsed timestamps)
 
 exports.handler = async (event) => {
   try {
     const p = event.queryStringParameters || {};
     const name = p.name;
-    const depthReqIn = parseFloat(p.depth || "4");
+    const depthReqIn = parseFloat(p.depth || "6");           // default view: 6"
     const tz = p.tz || "America/Chicago";
+    const days = Math.max(1, parseInt(p.days || "30", 10));  // pull enough for 30-day trend
     const key = process.env.IRRIMAX_API_KEY;
 
     if (!name) return json(400, { error: "Missing ?name=LOGGER_NAME" });
     if (!key)  return json(500, { error: "Missing IRRIMAX_API_KEY env var" });
 
-    // Pull last ~5 days to be safe (some uploads are sparse)
-    const since = new Date(Date.now() - 5 * 24 * 3600 * 1000);
+    // Pull last N days
+    const since = new Date(Date.now() - days * 24 * 3600 * 1000);
     const from = ymdHMS_utc(since);
 
     const url = `https://www.irrimaxlive.com/api/?cmd=getreadings&key=${encodeURIComponent(key)}&name=${encodeURIComponent(name)}&from=${from}`;
@@ -33,10 +35,7 @@ exports.handler = async (event) => {
     if (!rows.length) return json(200, { note: "No data (empty CSV)" });
 
     const header = rows[0].map(x => String(x||"").trim());
-
-    if (p.debug === "1") {
-      return json(200, { header });
-    }
+    if (p.debug === "1") return json(200, { header });
 
     // ---- find temp columns like T1(5), T2(15) (cm) ----
     const cols = []; // {colIdx, depthInches}
@@ -64,24 +63,16 @@ exports.handler = async (event) => {
     }
 
     // --- UTC-first timestamp parser ---
-    // IrriMAX often returns "YYYY-MM-DD HH:MM:SS" with no timezone.
-    // We interpret that as *UTC*, then format to the requested tz for output.
     function parseTsUTC(tsRaw) {
       const s = String(tsRaw).trim();
-
-      // If already has Z or ±HH:MM offset, let Date handle it.
       if (/[zZ]$/.test(s) || /[+\-]\d{2}:?\d{2}$/.test(s)) {
         const d = new Date(s);
         return isNaN(d) ? new Date(NaN) : d;
       }
-
-      // Normalize separators and parse manually as UTC.
-      // Accept "YYYY-MM-DD HH:MM[:SS]" or "YYYY/MM/DD HH:MM[:SS]" (with T or space).
       const m = s
         .replace(/\//g, "-")
         .replace(" ", "T")
         .match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2}))?/);
-
       if (m) {
         const [, yy, MM, dd, hh, mm, ss] = m.map(x => x && x.trim());
         const d = new Date(Date.UTC(
@@ -94,9 +85,7 @@ exports.handler = async (event) => {
         ));
         return isNaN(d) ? new Date(NaN) : d;
       }
-
-      // Last-ditch attempt (rare)
-      const d = new Date(s + "Z"); // treat bare string as UTC
+      const d = new Date(s + "Z");
       return isNaN(d) ? new Date(NaN) : d;
     }
 
@@ -112,23 +101,6 @@ exports.handler = async (event) => {
 
       const v = parseFloat(r[mapped.colIdx]);
       if (Number.isFinite(v)) readings.push({ ts: d, temp: v, raw: tsRaw });
-    }
-
-    // optional peek to diagnose what we're parsing
-    if (p.peek === "1") {
-      const sample = readings.slice(-6).map(x => ({
-        raw: x.raw,
-        parsedUTC_ISO: x.ts.toISOString(),
-        asChicago: new Intl.DateTimeFormat("en-US", {
-          timeZone: tz,
-          year: "numeric",
-          month: "2-digit",
-          day: "2-digit",
-          hour: "numeric",
-          minute: "2-digit"
-        }).format(x.ts)
-      }));
-      return json(200, { header, mappedColumn: header[mapped.colIdx], depthMappedIn: round1(mapped.depthInches), sample });
     }
 
     if (!readings.length) {
@@ -149,7 +121,26 @@ exports.handler = async (event) => {
       if (!high || r.temp > high.temp) high = r;
       if (!low  || r.temp < low.temp)  low  = r;
     }
-    const avg = todayReadings.length ? sum / todayReadings.length : null;
+    const avgToday = todayReadings.length ? sum / todayReadings.length : null;
+
+    // windowed averages for trends (rolling windows from "now")
+    const nowMs = Date.now();
+    const ms7  = 7 * 24 * 3600 * 1000;
+    const ms30 = 30 * 24 * 3600 * 1000;
+
+    const avgOver = (msBack) => {
+      const cutoff = nowMs - msBack;
+      const arr = readings.filter(r => r.ts.getTime() >= cutoff);
+      if (!arr.length) return null;
+      const s = arr.reduce((a,b) => a + b.temp, 0);
+      return s / arr.length;
+    };
+
+    const avg7  = avgOver(ms7);
+    const avg30 = avgOver(ms30);
+
+    const delta7  = (avg7  == null) ? null : (latest.temp - avg7);
+    const delta30 = (avg30 == null) ? null : (latest.temp - avg30);
 
     const fmtTime = (d) =>
       new Intl.DateTimeFormat("en-US", { timeZone: tz, hour: "numeric", minute: "2-digit" }).format(d);
@@ -157,15 +148,19 @@ exports.handler = async (event) => {
     return json(200, {
       name,
       tz,
-      units: "as-reported",
+      units: "as-reported",               // temperatures are returned in API's native units (usually °C)
       depthRequestedIn: depthReqIn,
       depthMappedIn: round1(mapped.depthInches),
       columnHeader: header[mapped.colIdx],
       current: { value: round1(latest.temp), time: fmtTime(latest.ts) },
       high:    high ? { value: round1(high.temp), time: fmtTime(high.ts) } : null,
       low:     low  ? { value: round1(low.temp),  time: fmtTime(low.ts) }  : null,
-      avg:     avg !== null ? round1(avg) : null,
-      count:   todayReadings.length
+      avg:     avgToday !== null ? round1(avgToday) : null,
+      count:   todayReadings.length,
+
+      // New trend payloads (in as-reported units)
+      trend7d:  { avg: avg7  == null ? null : round1(avg7),  delta: delta7  == null ? null : round1(delta7) },
+      trend30d: { avg: avg30 == null ? null : round1(avg30), delta: delta30 == null ? null : round1(delta30) }
     });
 
   } catch (e) {
