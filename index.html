@@ -6,21 +6,25 @@
   <title>Soil Temperature</title>
   <style>
     body {
+      margin: 0;
+      padding: 0;
       display: flex;
       justify-content: center;
-      align-items: center;
+      align-items: flex-start;   /* align near the top */
       min-height: 100vh;
-      background: #f0f4f9;
+      background: linear-gradient(135deg, #4facfe, #00f2fe);
       font-family: Arial, sans-serif;
     }
     .card {
       background: white;
+      margin-top: 40px;          /* space from very top */
       padding: 2rem;
       border-radius: 1.5rem;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+      box-shadow: 0 12px 40px rgba(0,0,0,0.2), 0 0 30px rgba(79,172,254,0.3);
       text-align: center;
       max-width: 350px;
-      width: 100%;
+      width: 90%;
+      animation: fadeIn 1s ease-out;
     }
     .card h1 {
       font-size: 1.6rem;
@@ -29,15 +33,20 @@
     }
     .stat {
       font-size: 1.2rem;
-      margin: 0.4rem 0;
+      margin: 0.6rem 0;
     }
     .value {
       font-weight: bold;
-      color: #333;
+      color: #111;
     }
     .time {
       font-size: 0.9rem;
       color: #666;
+      margin-bottom: 0.8rem;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-20px); }
+      to   { opacity: 1; transform: translateY(0); }
     }
   </style>
 </head>
