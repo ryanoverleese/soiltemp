@@ -1,24 +1,78 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Acre Insights — 4&quot; Soil Temperature</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Soil Temperature</title>
+  <style>
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      background: #f0f4f9;
+      font-family: Arial, sans-serif;
+    }
+    .card {
+      background: white;
+      padding: 2rem;
+      border-radius: 1.5rem;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+      text-align: center;
+      max-width: 350px;
+      width: 100%;
+    }
+    .card h1 {
+      font-size: 1.6rem;
+      margin-bottom: 1rem;
+      color: #2a5d8f;
+    }
+    .stat {
+      font-size: 1.2rem;
+      margin: 0.4rem 0;
+    }
+    .value {
+      font-weight: bold;
+      color: #333;
+    }
+    .time {
+      font-size: 0.9rem;
+      color: #666;
+    }
+  </style>
 </head>
 <body>
-  <h1>🌱 Acre Insights — 4&quot; Soil Temperature</h1>
-  <p>Logger: 25x4gcityw, Timezone: America/Chicago</p>
-  <div id="data">Loading…</div>
+  <div class="card" id="soil-card">
+    <h1>4" Soil Temperature</h1>
+    <p>Loading...</p>
+  </div>
+
   <script>
   (async () => {
-    const url = '/.netlify/functions/soil-temp?name=25x4gcityw&depth=4&tz=America/Chicago';
-    try {
-      const res = await fetch(url);
-      const data = await res.json();
-      document.getElementById('data').textContent = JSON.stringify(data, null, 2);
-    } catch (e) {
-      document.getElementById('data').textContent = 'Demo data: High 79°F (3:00 PM), Low 56°F (6:00 AM), Avg 67°F';
+    const url = '/.netlify/functions/soil-temp?name=25x4gcityw&depth=4&tz=America/Chicago&to=F';
+    const res = await fetch(url);
+    const data = await res.json();
+
+    const card = document.getElementById('soil-card');
+
+    if (data.error || data.note) {
+      card.innerHTML += `<p>${data.error || data.note}</p>`;
+      return;
     }
+
+    card.innerHTML = `
+      <h1>${data.depthRequestedIn}" Soil Temperature</h1>
+      <div class="stat">🌡 Current: <span class="value">${data.current.value} °F</span></div>
+      <div class="time">at ${data.current.time}</div>
+
+      <div class="stat">⬆ High: <span class="value">${data.high.value} °F</span></div>
+      <div class="time">at ${data.high.time}</div>
+
+      <div class="stat">⬇ Low: <span class="value">${data.low.value} °F</span></div>
+      <div class="time">at ${data.low.time}</div>
+
+      <div class="stat">📊 Avg: <span class="value">${data.avg} °F</span></div>
+    `;
   })();
   </script>
 </body>
