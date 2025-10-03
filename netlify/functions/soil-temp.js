@@ -63,37 +63,51 @@ exports.handler = async (event) => {
       if (Math.abs(c.depthInches - depthReqIn) < Math.abs(mapped.depthInches - depthReqIn)) mapped = c;
     }
 
-    // robust timestamp parser: try local CST/CDT, then strict UTC, then native
-    function parseTsRobust(tsRaw) {
+    // --- UTC-first timestamp parser ---
+    // IrriMAX often returns "YYYY-MM-DD HH:MM:SS" with no timezone.
+    // We interpret that as *UTC*, then format to the requested tz for output.
+    function parseTsUTC(tsRaw) {
       const s = String(tsRaw).trim();
 
-      // normalize common forms: "YYYY-MM-DD HH:MM:SS" or "YYYY/MM/DD HH:MM"
-      const isoLike = s.includes("T") ? s : s.replace(" ", "T");
+      // If already has Z or ±HH:MM offset, let Date handle it.
+      if (/[zZ]$/.test(s) || /[+\-]\d{2}:?\d{2}$/.test(s)) {
+        const d = new Date(s);
+        return isNaN(d) ? new Date(NaN) : d;
+      }
 
-      // 1) Treat as local America/Chicago
-      const localStr = new Date(isoLike).toLocaleString("en-US", { timeZone: "America/Chicago" });
-      const asLocal = new Date(localStr);
-      if (!isNaN(asLocal)) return asLocal;
+      // Normalize separators and parse manually as UTC.
+      // Accept "YYYY-MM-DD HH:MM[:SS]" or "YYYY/MM/DD HH:MM[:SS]" (with T or space).
+      const m = s
+        .replace(/\//g, "-")
+        .replace(" ", "T")
+        .match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2}))?/);
 
-      // 2) Treat as UTC explicitly by appending Z (if not already)
-      const asUtc = new Date(isoLike.endsWith("Z") ? isoLike : isoLike + "Z");
-      if (!isNaN(asUtc)) return asUtc;
+      if (m) {
+        const [, yy, MM, dd, hh, mm, ss] = m.map(x => x && x.trim());
+        const d = new Date(Date.UTC(
+          Number(yy),
+          Number(MM) - 1,
+          Number(dd),
+          Number(hh),
+          Number(mm),
+          Number(ss || "0")
+        ));
+        return isNaN(d) ? new Date(NaN) : d;
+      }
 
-      // 3) Fallback to native parse
-      const nat = new Date(s);
-      if (!isNaN(nat)) return nat;
-
-      return new Date(NaN);
+      // Last-ditch attempt (rare)
+      const d = new Date(s + "Z"); // treat bare string as UTC
+      return isNaN(d) ? new Date(NaN) : d;
     }
 
     // build readings
-    const readings = []; // { ts: Date, temp: number }
+    const readings = []; // { ts: Date, temp: number, raw: string }
     const dateIdx = 0; // "Date Time" typically first column
     for (let i = 1; i < rows.length; i++) {
       const r = rows[i];
       const tsRaw = r[dateIdx];
       if (!tsRaw) continue;
-      const d = parseTsRobust(tsRaw);
+      const d = parseTsUTC(tsRaw);
       if (isNaN(d)) continue;
 
       const v = parseFloat(r[mapped.colIdx]);
@@ -104,7 +118,15 @@ exports.handler = async (event) => {
     if (p.peek === "1") {
       const sample = readings.slice(-6).map(x => ({
         raw: x.raw,
-        parsedLocal: new Intl.DateTimeFormat("en-US", { timeZone: tz, hour:'numeric', minute:'2-digit', month:'2-digit', day:'2-digit'}).format(x.ts)
+        parsedUTC_ISO: x.ts.toISOString(),
+        asChicago: new Intl.DateTimeFormat("en-US", {
+          timeZone: tz,
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+          hour: "numeric",
+          minute: "2-digit"
+        }).format(x.ts)
       }));
       return json(200, { header, mappedColumn: header[mapped.colIdx], depthMappedIn: round1(mapped.depthInches), sample });
     }
@@ -129,7 +151,8 @@ exports.handler = async (event) => {
     }
     const avg = todayReadings.length ? sum / todayReadings.length : null;
 
-    const fmtTime = (d) => new Intl.DateTimeFormat("en-US", { timeZone: tz, hour: "numeric", minute: "2-digit" }).format(d);
+    const fmtTime = (d) =>
+      new Intl.DateTimeFormat("en-US", { timeZone: tz, hour: "numeric", minute: "2-digit" }).format(d);
 
     return json(200, {
       name,
