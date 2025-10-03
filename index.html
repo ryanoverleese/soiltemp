@@ -36,28 +36,42 @@
       padding: 20px;
       text-align: center;
     }
-    .title { font-weight: 800; font-size: 20px; margin-bottom: 4px; }
-    .sub { color: var(--muted); font-size: 14px; margin-bottom: 16px; }
-    .row { padding: 14px 0; }
-    .row + .row { border-top: 1px solid var(--divider); }
-    .label { font-weight: 700; }
-    .val { font-weight: 800; font-size: 26px; margin: 4px 0; }
-    .time { font-size: 12px; color: var(--muted); }
+    .title { font-weight: 800; font-size: 20px; margin-bottom: 12px; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+    .tile {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--divider);
+      border-radius: 12px;
+      padding: 12px;
+    }
+    .tile .label {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+    .tile .val {
+      font-size: 26px;
+      font-weight: 900;
+      margin: 2px 0;
+    }
+    .tile .time {
+      font-size: 11px;
+      color: var(--muted);
+    }
     .current .val { color: var(--ok); }
     .high .val { color: var(--hi); }
     .low .val { color: var(--lo); }
     .avg .val { color: var(--avg); }
 
     /* Trends section */
-    .section {
-      text-align: left;
-      margin-top: 16px;
-    }
     .section h3 {
       margin: 0 0 10px 0;
       font-size: 14px;
-      letter-spacing: .02em;
+      font-weight: 800;
+      text-align: center;
       text-transform: uppercase;
+      letter-spacing: .02em;
       color: var(--muted);
     }
     .trend-grid {
@@ -74,8 +88,8 @@
     }
     .trend-tile .t-label {
       font-size: 12px;
-      color: var(--muted);
       font-weight: 700;
+      color: var(--muted);
       margin-bottom: 6px;
     }
     .trend-tile .t-val {
@@ -83,22 +97,20 @@
       font-weight: 900;
       line-height: 1.1;
     }
-    .t-up { color: var(--avg); }  /* warming (gold) */
-    .t-down { color: var(--lo); } /* cooling (blue) */
+    .t-up { color: var(--avg); }
+    .t-down { color: var(--lo); }
   </style>
 </head>
 <body>
   <div class="card">
     <div class="title">🌱 6" Soil Temperature</div>
-    <div class="sub">Daily Summary</div>
     <div id="content">Loading…</div>
   </div>
 
   <script>
     (async () => {
       const loggerName = "25x4gcityw";   // your logger name
-      const tz = "America/Chicago";      // CST/CDT
-      // Pull 30 days so we can show both 7d & 30d trends
+      const tz = "America/Chicago";      // still fetches correctly
       const url = `/.netlify/functions/soil-temp?name=${encodeURIComponent(loggerName)}&tz=${encodeURIComponent(tz)}&days=30`;
 
       const toF = c => Math.round((c * 9/5 + 32) * 10) / 10;
@@ -120,8 +132,7 @@
               <div class="trend-tile">
                 <div class="t-label">${label}</div>
                 <div class="t-val">—</div>
-              </div>
-            `;
+              </div>`;
           }
           const dF = deltaToF(deltaC);
           const cls = dF >= 0 ? "t-up" : "t-down";
@@ -129,37 +140,39 @@
             <div class="trend-tile">
               <div class="t-label">${label}</div>
               <div class="t-val ${cls}">${signed(dF.toFixed(1))}°</div>
-            </div>
-          `;
+            </div>`;
         };
 
         document.getElementById("content").innerHTML = `
-          <div class="row current">
-            <div class="label">Current</div>
-            <div class="val">${toF(data.current.value)}°F</div>
-            <div class="time">${data.current.time} (${tz})</div>
+          <div class="grid">
+            <div class="tile current">
+              <div class="label">Current</div>
+              <div class="val">${toF(data.current.value)}°F</div>
+              <div class="time">${data.current.time} CST</div>
+            </div>
+            <div class="tile avg">
+              <div class="label">Average (today)</div>
+              <div class="val">${data.avg !== null ? toF(data.avg) : "—"}°F</div>
+              <div class="time">${data.count ?? 0} readings</div>
+            </div>
           </div>
-          <div class="row high">
-            <div class="label">High</div>
-            <div class="val">${data.high ? toF(data.high.value) : "—"}°F</div>
-            <div class="time">${data.high ? data.high.time + " (" + tz + ")" : "—"}</div>
+          <div class="grid">
+            <div class="tile high">
+              <div class="label">High</div>
+              <div class="val">${data.high ? toF(data.high.value) : "—"}°F</div>
+              <div class="time">${data.high ? data.high.time + " CST" : "—"}</div>
+            </div>
+            <div class="tile low">
+              <div class="label">Low</div>
+              <div class="val">${data.low ? toF(data.low.value) : "—"}°F</div>
+              <div class="time">${data.low ? data.low.time + " CST" : "—"}</div>
+            </div>
           </div>
-          <div class="row low">
-            <div class="label">Low</div>
-            <div class="val">${data.low ? toF(data.low.value) : "—"}°F</div>
-            <div class="time">${data.low ? data.low.time + " (" + tz + ")" : "—"}</div>
-          </div>
-          <div class="row avg">
-            <div class="label">Average (today)</div>
-            <div class="val">${data.avg !== null ? toF(data.avg) : "—"}°F</div>
-            <div class="time">${data.count ?? 0} readings today</div>
-          </div>
-
           <div class="section">
             <h3>Trends</h3>
             <div class="trend-grid">
-              ${trendTile("7-day trend",  data.trend7d?.delta)}
-              ${trendTile("30-day trend", data.trend30d?.delta)}
+              ${trendTile("7-day", data.trend7d?.delta)}
+              ${trendTile("30-day", data.trend30d?.delta)}
             </div>
           </div>
         `;
