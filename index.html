@@ -1,113 +1,129 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>4" Soil Temperature</title>
-  <style>
-    body {
-      margin: 0;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      background: #0a1325; /* deep blue background */
-      color: #e6eef7;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      min-height: 100vh;
-    }
-    .card {
-      width: min(92vw, 400px);
-      background: #111f3b;
-      border: 1px solid rgba(255,255,255,.1);
-      border-radius: 16px;
-      box-shadow: 0 8px 25px rgba(0,0,0,.6);
-      padding: 20px;
-    }
-    .title {
-      text-align: center;
-      font-size: 20px;
-      font-weight: 700;
-      margin-bottom: 4px;
-    }
-    .sub {
-      text-align: center;
-      font-size: 14px;
-      color: #9fb3c8;
-      margin-bottom: 16px;
-    }
-    .row {
-      text-align: center;
-      padding: 12px 0;
-    }
-    .row + .row {
-      border-top: 1px solid rgba(255,255,255,.08);
-    }
-    .label {
-      font-size: 15px;
-      font-weight: 600;
-      margin-bottom: 4px;
-    }
-    .val {
-      font-size: 24px;
-      font-weight: 700;
-      margin: 2px 0;
-    }
-    .time {
-      font-size: 12px;
-      color: #9fb3c8;
-    }
-    .current .val { color: #33d17a; }
-    .high .val { color: #ff5577; }
-    .low .val { color: #4ea3ff; }
-    .avg .val { color: #ffbf47; }
-  </style>
-</head>
-<body>
-  <div class="card">
-    <div class="title">🌱 4" Soil Temperature</div>
-    <div class="sub">Daily Summary</div>
-    <div id="content">Loading...</div>
-  </div>
+const fetch = require("node-fetch");
+const Papa = require("papaparse");
 
-  <script>
-  (async () => {
-    const loggerName = "25x4gcityw";  // your logger
-    const tz = "America/Chicago";
-    const url = `/.netlify/functions/soil-temp?name=${loggerName}&tz=${encodeURIComponent(tz)}`;
+exports.handler = async (event) => {
+  try {
+    const { name, tz = "America/Chicago", depthRequestedIn = 4 } = event.queryStringParameters;
+
+    if (!name) {
+      return json(400, { error: "Missing ?name=loggerID" });
+    }
+
+    const APIKEY = process.env.IRRIMAX_API_KEY;
+    if (!APIKEY) {
+      return json(500, { error: "No API key set" });
+    }
+
+    // IrriMAX CSV endpoint
+    const url = `https://www.irrimaxlive.com/api/?cmd=getreadings&key=${APIKEY}&name=${name}`;
+
     const res = await fetch(url);
-    const data = await res.json();
-
-    if (data.error || data.note) {
-      document.getElementById('content').textContent = data.error || data.note;
-      return;
+    if (!res.ok) {
+      return json(500, { error: `Failed IrriMAX fetch: ${res.status}` });
     }
 
-    const toF = c => Math.round((c * 9/5 + 32) * 10) / 10;
+    const text = await res.text();
+    const parsed = Papa.parse(text, { header: true });
+    const rows = parsed.data.filter((r) => r["Date Time"]);
 
-    const html = `
-      <div class="row current">
-        <div class="label">Current</div>
-        <div class="val">${toF(data.current.value)}°F</div>
-        <div class="time">${data.current.time}</div>
-      </div>
-      <div class="row high">
-        <div class="label">High</div>
-        <div class="val">${toF(data.high.value)}°F</div>
-        <div class="time">${data.high.time}</div>
-      </div>
-      <div class="row low">
-        <div class="label">Low</div>
-        <div class="val">${toF(data.low.value)}°F</div>
-        <div class="time">${data.low.time}</div>
-      </div>
-      <div class="row avg">
-        <div class="label">Average</div>
-        <div class="val">${toF(data.avg)}°F</div>
-      </div>
-    `;
+    // Which column to use (temperature near requested depth)
+    const headers = parsed.meta.fields;
+    const tCols = headers.filter((h) => h.startsWith("T"));
+    // e.g., ["T1(5)", "T2(15)", "T3(25)"]
+    let mapped = { colIdx: null, depthInches: null };
 
-    document.getElementById('content').innerHTML = html;
-  })();
-  </script>
-</body>
-</html>
+    for (let col of tCols) {
+      const match = col.match(/\((\d+)\)/);
+      if (match) {
+        const depth = parseInt(match[1], 10);
+        if (!mapped.colIdx || Math.abs(depth - depthRequestedIn) < Math.abs(mapped.depthInches - depthRequestedIn)) {
+          mapped.colIdx = headers.indexOf(col);
+          mapped.depthInches = depth;
+          mapped.colName = col;
+        }
+      }
+    }
+
+    if (!mapped.colIdx) {
+      return json(400, { error: "No depth columns in CSV header" });
+    }
+
+    // Helper: parse timestamps as CST/CDT
+    function parseAsChicago(tsRaw) {
+      const localString = new Date(tsRaw).toLocaleString("en-US", { timeZone: "America/Chicago" });
+      return new Date(localString);
+    }
+
+    // Collect readings
+    const readings = [];
+    for (let row of rows) {
+      const tsRaw = row["Date Time"];
+      if (!tsRaw) continue;
+      const d = parseAsChicago(tsRaw);
+      if (isNaN(d)) continue;
+
+      const v = parseFloat(Object.values(row)[mapped.colIdx]);
+      if (Number.isFinite(v)) {
+        readings.push({ ts: d, temp: v });
+      }
+    }
+
+    if (!readings.length) {
+      return json(200, { error: "No readings available" });
+    }
+
+    // Sort by timestamp
+    readings.sort((a, b) => a.ts - b.ts);
+    const latest = readings[readings.length - 1];
+
+    // Group for today's high/low/avg
+    const today = new Date().toLocaleDateString("en-US", { timeZone: tz });
+    const todayReadings = readings.filter(
+      (r) => r.ts.toLocaleDateString("en-US", { timeZone: tz }) === today
+    );
+
+    let high = null, low = null, sum = 0;
+    for (let r of todayReadings) {
+      if (high === null || r.temp > high.temp) high = r;
+      if (low === null || r.temp < low.temp) low = r;
+      sum += r.temp;
+    }
+    const avg = todayReadings.length ? sum / todayReadings.length : null;
+
+    const fmtTime = (d) =>
+      new Intl.DateTimeFormat("en-US", {
+        timeZone: tz,
+        hour: "numeric",
+        minute: "2-digit",
+      }).format(d);
+
+    return json(200, {
+      name,
+      tz,
+      units: "as-reported",
+      depthRequestedIn,
+      depthMappedIn: mapped.depthInches,
+      columnHeader: mapped.colName,
+      current: latest ? { value: round1(latest.temp), time: fmtTime(latest.ts) } : null,
+      high: high ? { value: round1(high.temp), time: fmtTime(high.ts) } : null,
+      low: low ? { value: round1(low.temp), time: fmtTime(low.ts) } : null,
+      avg: avg ? round1(avg) : null,
+      count: todayReadings.length,
+    });
+  } catch (err) {
+    console.error(err);
+    return json(500, { error: "Exception: " + err.message });
+  }
+};
+
+function round1(x) {
+  return Math.round(x * 10) / 10;
+}
+
+function json(status, body) {
+  return {
+    statusCode: status,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  };
+}
