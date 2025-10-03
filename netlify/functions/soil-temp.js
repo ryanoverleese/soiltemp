@@ -1,173 +1,129 @@
-// netlify/functions/soil-temp.js
-// Reads Sentek IrriMAX Live CSV via API and returns JSON with current/high/low/avg
-// Expects env var IRRIMAX_API_KEY set in Netlify.
-// Query params:
-//   name=LOGGER_NAME   (required)
-//   depth=4            (inches; optional, default 4)
-//   tz=America/Chicago (optional; default America/Chicago)
-//   debug=1            (optional; returns header only)
+const fetch = require("node-fetch");
+const Papa = require("papaparse");
 
 exports.handler = async (event) => {
   try {
-    const params = event.queryStringParameters || {};
-    const name = params.name;                          // e.g. 25x4gcityw
-    const depthReqIn = parseFloat(params.depth || "4");// inches requested (we map to nearest cm column)
-    const tz = params.tz || "America/Chicago";
-    const key = process.env.IRRIMAX_API_KEY;
+    const { name, tz = "America/Chicago", depthRequestedIn = 4 } = event.queryStringParameters;
 
-    if (!name) return json(400, { error: "Missing ?name=LOGGER_NAME" });
-    if (!key)  return json(500, { error: "Missing IRRIMAX_API_KEY env var" });
-
-    // Pull ~36h back, then we’ll filter to "today" in the target timezone
-    const since = new Date(Date.now() - 36 * 3600 * 1000);
-    const from = ymdHMS_utc(since);
-
-    const url = `https://www.irrimaxlive.com/api/?cmd=getreadings&key=${encodeURIComponent(key)}&name=${encodeURIComponent(name)}&from=${from}`;
-    const r = await fetch(url);
-    if (!r.ok) {
-      const body = await r.text().catch(() => "");
-      return json(502, { error: "IrriMAX fetch failed", status: r.status, body });
-    }
-    const csv = await r.text();
-    const rows = parseCSV(csv);
-    if (!rows.length) return json(200, { note: "No data" });
-
-    // Debug: show the header as returned by IrriMAX
-    if (params.debug === "1") {
-      return json(200, { header: rows[0] });
+    if (!name) {
+      return json(400, { error: "Missing ?name=loggerID" });
     }
 
-    // ----------------------------
-    // Identify temperature columns by pattern T#(cm), e.g. T1(5), T2(15)
-    // Convert cm → inches (1 in = 2.54 cm)
-    const header = rows[0].map(s => String(s || "").trim());
-    const cols = []; // [{ colIdx, depthInches }]
-    function pushCol(colIdx, inches) {
-      cols.push({ colIdx, depthInches: inches });
+    const APIKEY = process.env.IRRIMAX_API_KEY;
+    if (!APIKEY) {
+      return json(500, { error: "No API key set" });
     }
 
-    header.forEach((h, i) => {
-      // Strict T#(cm) pattern: T1(5), T2(15), T3(25) ...
-      let m = h.match(/^T\d+\((\d+(?:\.\d+)?)\)\s*$/i);
-      if (m) {
-        const cm = parseFloat(m[1]);
-        pushCol(i, cm / 2.54);
-        return;
-      }
+    // IrriMAX CSV endpoint
+    const url = `https://www.irrimaxlive.com/api/?cmd=getreadings&key=${APIKEY}&name=${name}`;
 
-      // Optional fallback: "Temp 10cm", "Temperature @ 10 cm"
-      m = h.match(/(?:temp|temperature)[^0-9]*([0-9]+(?:\.\d+)?)\s*cm/i);
-      if (m) {
-        const cm = parseFloat(m[1]);
-        pushCol(i, cm / 2.54);
-        return;
-      }
-    });
-
-    if (!cols.length) {
-      return json(500, { error: "No depth columns detected (expected T#(cm) headers)", header });
+    const res = await fetch(url);
+    if (!res.ok) {
+      return json(500, { error: `Failed IrriMAX fetch: ${res.status}` });
     }
 
-    // Pick the nearest temperature column to the requested depth (in)
-    let mapped = cols[0];
-    for (const c of cols) {
-      if (Math.abs(c.depthInches - depthReqIn) < Math.abs(mapped.depthInches - depthReqIn)) {
-        mapped = c;
+    const text = await res.text();
+    const parsed = Papa.parse(text, { header: true });
+    const rows = parsed.data.filter((r) => r["Date Time"]);
+
+    // Which column to use (temperature near requested depth)
+    const headers = parsed.meta.fields;
+    const tCols = headers.filter((h) => h.startsWith("T"));
+    // e.g., ["T1(5)", "T2(15)", "T3(25)"]
+    let mapped = { colIdx: null, depthInches: null };
+
+    for (let col of tCols) {
+      const match = col.match(/\((\d+)\)/);
+      if (match) {
+        const depth = parseInt(match[1], 10);
+        if (!mapped.colIdx || Math.abs(depth - depthRequestedIn) < Math.abs(mapped.depthInches - depthRequestedIn)) {
+          mapped.colIdx = headers.indexOf(col);
+          mapped.depthInches = depth;
+          mapped.colName = col;
+        }
       }
     }
 
-    // ----------------------------
-    // Keep only "today" in given TZ, compute current/high/low/avg
-    const todayStr = dateOnly_tz(new Date(), tz);
-    const readings = []; // { ts: Date, temp: number }
-    for (let i = 1; i < rows.length; i++) {
-      const row = rows[i];
-      const tsRaw = row[0];
+    if (!mapped.colIdx) {
+      return json(400, { error: "No depth columns in CSV header" });
+    }
+
+    // Helper: parse timestamps as CST/CDT
+    function parseAsChicago(tsRaw) {
+      const localString = new Date(tsRaw).toLocaleString("en-US", { timeZone: "America/Chicago" });
+      return new Date(localString);
+    }
+
+    // Collect readings
+    const readings = [];
+    for (let row of rows) {
+      const tsRaw = row["Date Time"];
       if (!tsRaw) continue;
-      const d = new Date(tsRaw);
+      const d = parseAsChicago(tsRaw);
       if (isNaN(d)) continue;
-      if (dateOnly_tz(d, tz) !== todayStr) continue;
 
-      const v = parseFloat(row[mapped.colIdx]);
-      if (Number.isFinite(v)) readings.push({ ts: d, temp: v });
+      const v = parseFloat(Object.values(row)[mapped.colIdx]);
+      if (Number.isFinite(v)) {
+        readings.push({ ts: d, temp: v });
+      }
     }
 
     if (!readings.length) {
-      return json(200, {
-        name,
-        tz,
-        depthRequestedIn: depthReqIn,
-        depthMappedIn: round1(mapped.depthInches),
-        note: "No readings today yet"
-      });
+      return json(200, { error: "No readings available" });
     }
 
-    let high = readings[0], low = readings[0], sum = 0;
-    for (const r1 of readings) {
-      sum += r1.temp;
-      if (r1.temp > high.temp) high = r1;
-      if (r1.temp < low.temp)  low  = r1;
+    // Sort by timestamp
+    readings.sort((a, b) => a.ts - b.ts);
+    const latest = readings[readings.length - 1];
+
+    // Group for today's high/low/avg
+    const today = new Date().toLocaleDateString("en-US", { timeZone: tz });
+    const todayReadings = readings.filter(
+      (r) => r.ts.toLocaleDateString("en-US", { timeZone: tz }) === today
+    );
+
+    let high = null, low = null, sum = 0;
+    for (let r of todayReadings) {
+      if (high === null || r.temp > high.temp) high = r;
+      if (low === null || r.temp < low.temp) low = r;
+      sum += r.temp;
     }
-    const avg = sum / readings.length;
-    const current = readings[readings.length - 1];
+    const avg = todayReadings.length ? sum / todayReadings.length : null;
 
     const fmtTime = (d) =>
-      new Intl.DateTimeFormat("en-US", { timeZone: tz, hour: "numeric", minute: "2-digit" }).format(d);
+      new Intl.DateTimeFormat("en-US", {
+        timeZone: tz,
+        hour: "numeric",
+        minute: "2-digit",
+      }).format(d);
 
-    // Note: Units are "as reported" by IrriMAX (often °C if your logger is in °C; °F if °F)
     return json(200, {
       name,
       tz,
       units: "as-reported",
-      depthRequestedIn: depthReqIn,
-      depthMappedIn: round1(mapped.depthInches),
-      current: { value: round1(current.temp), time: fmtTime(current.ts) },
-      high:    { value: round1(high.temp),    time: fmtTime(high.ts) },
-      low:     { value: round1(low.temp),     time: fmtTime(low.ts) },
-      avg: round1(avg),
-      count: readings.length,
-      columnHeader: header[mapped.colIdx] // e.g., "T1(5)"
+      depthRequestedIn,
+      depthMappedIn: mapped.depthInches,
+      columnHeader: mapped.colName,
+      current: latest ? { value: round1(latest.temp), time: fmtTime(latest.ts) } : null,
+      high: high ? { value: round1(high.temp), time: fmtTime(high.ts) } : null,
+      low: low ? { value: round1(low.temp), time: fmtTime(low.ts) } : null,
+      avg: avg ? round1(avg) : null,
+      count: todayReadings.length,
     });
-  } catch (e) {
-    return json(500, { error: e?.message || String(e) });
+  } catch (err) {
+    console.error(err);
+    return json(500, { error: "Exception: " + err.message });
   }
 };
 
-// -------------- helpers --------------
-function json(status, body) {
-  return { statusCode: status, headers: { "content-type": "application/json" }, body: JSON.stringify(body) };
-}
-function round1(x) { return Math.round(x * 10) / 10; }
-function ymdHMS_utc(d) {
-  const y = d.getUTCFullYear();
-  const m = String(d.getUTCMonth() + 1).padStart(2, '0');
-  const da= String(d.getUTCDate()).padStart(2, '0');
-  const H = String(d.getUTCHours()).padStart(2, '0');
-  const M = String(d.getUTCMinutes()).padStart(2, '0');
-  const S = String(d.getUTCSeconds()).padStart(2, '0');
-  return `${y}${m}${da}${H}${M}${S}`;
-}
-function dateOnly_tz(d, tz) {
-  return new Intl.DateTimeFormat("en-CA", { timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit" }).format(d);
-}
-// Minimal CSV parser with quote handling
-function parseCSV(text) {
-  const out = []; let row = []; let cur = ""; let inQ = false;
-  for (let i = 0; i < text.length; i++) {
-    const ch = text[i], nx = text[i + 1];
-    if (inQ) {
-      if (ch === '"' && nx === '"') { cur += '"'; i++; }
-      else if (ch === '"') { inQ = false; }
-      else { cur += ch; }
-    } else {
-      if (ch === '"') inQ = true;
-      else if (ch === ",") { row.push(cur); cur = ""; }
-      else if (ch === "\n") { row.push(cur); out.push(row); row = []; cur = ""; }
-      else if (ch === "\r") { /* ignore */ }
-      else { cur += ch; }
-    }
-  }
-  if (cur.length || row.length) { row.push(cur); out.push(row); }
-  return out;
+function round1(x) {
+  return Math.round(x * 10) / 10;
 }
 
+function json(status, body) {
+  return {
+    statusCode: status,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  };
+}
