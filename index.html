@@ -61,7 +61,10 @@
 
   <script>
     (async () => {
-      const url = '/.netlify/functions/soil-temp';
+      // 👇 Hard-code your logger name here
+      const loggerName = "25x4gcityw";
+      const url = `/.netlify/functions/soil-temp?name=${loggerName}`;
+      
       const res = await fetch(url);
       const data = await res.json();
 
