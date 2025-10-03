@@ -122,7 +122,7 @@
       const tz = "America/Chicago";            // output TZ
       // If your timestamps are actually local device time, set parse=local
       const parseMode = "utc";                 // "utc" or "local"
-      const url = `/.netlify/functions/soil-temp?name=${encodeURIComponent(loggerName)}&tz=${encodeURIComponent(tz)}&days=30&parse=${parseMode}`;
+      const url = `/.netlify/functions/soil-temp?name=${encodeURIComponent(loggerName)}&tz=America/Chicago&days=30&parse=local&_=${Date.now()}`;
 
       const toF = c => Math.round((c * 9/5 + 32) * 10) / 10;
       const deltaToF = dc => Math.round((dc * 9/5) * 10) / 10;
