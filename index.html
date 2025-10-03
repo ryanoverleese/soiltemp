@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>6" Soil Temperature</title>
+  <title>6&quot; Soil Temperature</title>
 
   <!-- Inter font -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
@@ -112,17 +112,18 @@
 </head>
 <body>
   <div class="card">
-    <div class="title">6" Soil Temperature</div>
+    <div class="title">6&quot; Soil Temperature</div>
     <div id="content">Loading…</div>
   </div>
 
   <script>
     (async () => {
-      const loggerName = "25x4gcityw";         // your logger
-      const tz = "America/Chicago";            // output TZ
-      // If your timestamps are actually local device time, set parse=local
-      const parseMode = "utc";                 // "utc" or "local"
-      const url = `/.netlify/functions/soil-temp?name=${encodeURIComponent(loggerName)}&tz=America/Chicago&days=30&parse=local&_=${Date.now()}`;
+      const loggerName = "25x4gcityw";        // your logger name
+      const tz = "America/Chicago";           // output TZ
+      // cache-buster to avoid stale responses during testing
+      const bust = Date.now();
+      // Pull 30 days so we can show both 7d & 30d trends
+      const url = `/.netlify/functions/soil-temp?name=${encodeURIComponent(loggerName)}&tz=${encodeURIComponent(tz)}&days=30&_=${bust}`;
 
       const toF = c => Math.round((c * 9/5 + 32) * 10) / 10;
       const deltaToF = dc => Math.round((dc * 9/5) * 10) / 10;
