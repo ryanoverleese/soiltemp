@@ -1,124 +1,92 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>4&quot; Soil Temperature</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Soil Temperature</title>
   <style>
     body {
       margin: 0;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
-      background: linear-gradient(135deg, #74ebd5, #9face6);
+      padding: 0;
       display: flex;
       justify-content: center;
       align-items: center;
-      height: 100vh;
+      min-height: 100vh;
+      background: linear-gradient(to bottom right, #00c6ff, #0072ff);
+      font-family: Arial, sans-serif;
     }
+
     .card {
       background: white;
-      border-radius: 20px;
-      padding: 24px;
-      max-width: 380px;
-      width: 90%;
+      border-radius: 16px;
+      box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+      padding: 20px 30px;
       text-align: center;
-      box-shadow: 0 12px 35px rgba(0, 0, 0, 0.15);
-      animation: fadeIn 0.6s ease-in-out;
+      animation: fadeIn 1s ease-in-out;
     }
+
     h1 {
-      font-size: 22px;
-      margin-bottom: 12px;
-      color: #1e3a8a;
+      font-size: 1.5rem;
+      color: #1a237e;
+      margin-bottom: 20px;
     }
-    .row {
-      margin: 16px 0;
-      padding: 12px;
-      border-radius: 12px;
-      background: #f9fafb;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      box-shadow: inset 0 0 6px rgba(0,0,0,0.04);
+
+    p {
+      font-size: 1.1rem;
+      margin: 10px 0;
     }
-    .label {
-      font-weight: 600;
-      margin-bottom: 4px;
-    }
-    .value {
-      font-size: 22px;
-      font-weight: bold;
-    }
-    .time {
-      font-size: 12px;
-      color: #6b7280;
-      margin-top: 2px;
-    }
-    .current { color: #16a34a; }
+
+    .current { color: #1ba34a; }
     .high { color: #e11d48; }
     .low { color: #2563eb; }
     .avg { color: #ca8a04; }
+
+    small {
+      display: block;
+      font-size: 0.8rem;
+      color: #555;
+    }
+
     @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(15px); }
+      from { opacity: 0; transform: translateY(10px); }
       to { opacity: 1; transform: translateY(0); }
     }
   </style>
 </head>
 <body>
-  body {
-  margin: 0;              /* remove browser default margin */
-  padding: 0;             /* remove browser default padding */
-  display: flex;
-  justify-content: center; /* center horizontally */
-  align-items: center;     /* center vertically */
-  min-height: 100vh;       /* take full screen height */
-  background: linear-gradient(to bottom right, #00c6ff, #0072ff); /* keep your gradient */
-}
   <div class="card">
     <h1>🌱 4" Soil Temperature</h1>
     <div id="content">Loading...</div>
   </div>
 
   <script>
-  (async () => {
-    const url = '/.netlify/functions/soil-temp?name=25x4gcityw&depth=4&tz=America/Chicago';
-    const res = await fetch(url);
-    const data = await res.json();
+    (async () => {
+      const url = '/.netlify/functions/soil-temp';
+      const res = await fetch(url);
+      const data = await res.json();
 
-    const toF = c => Math.round((c * 9/5 + 32) * 10) / 10; // Convert °C → °F
+      const toF = c => Math.round((c * 9/5 + 32) * 10) / 10;
 
-    const content = document.getElementById("content");
+      const content = document.getElementById("content");
 
-    if (data.error || data.note) {
-      content.textContent = data.error || data.note;
-      return;
-    }
+      if (data.error || data.note) {
+        content.textContent = data.error || data.note;
+        return;
+      }
 
-    const currentF = toF(data.current.value);
-    const highF = toF(data.high.value);
-    const lowF = toF(data.low.value);
-    const avgF = toF(data.avg);
+      content.innerHTML = `
+        <p class="current">🌡️ Current: <b>${toF(data.current.value)} °F</b>
+        <small>at ${data.current.time}</small></p>
 
-    content.innerHTML = `
-      <div class="row current">
-        <div class="label">🌡 Current</div>
-        <div class="value">${currentF} °F</div>
-        <div class="time">at ${data.current.time}</div>
-      </div>
-      <div class="row high">
-        <div class="label">⬆ High</div>
-        <div class="value">${highF} °F</div>
-        <div class="time">at ${data.high.time}</div>
-      </div>
-      <div class="row low">
-        <div class="label">⬇ Low</div>
-        <div class="value">${lowF} °F</div>
-        <div class="time">at ${data.low.time}</div>
-      </div>
-      <div class="row avg">
-        <div class="label">📊 Average</div>
-        <div class="value">${avgF} °F</div>
-      </div>
-    `;
-  })();
+        <p class="high">⬆️ High: <b>${toF(data.high.value)} °F</b>
+        <small>at ${data.high.time}</small></p>
+
+        <p class="low">⬇️ Low: <b>${toF(data.low.value)} °F</b>
+        <small>at ${data.low.time}</small></p>
+
+        <p class="avg">📊 Average: <b>${toF(data.avg)} °F</b></p>
+      `;
+    })();
   </script>
 </body>
 </html>
