@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Acre Insights — 4&quot; Soil Temperature</title>
+</head>
+<body>
+  <h1>🌱 Acre Insights — 4&quot; Soil Temperature</h1>
+  <p>Logger: 25x4gcityw, Timezone: America/Chicago</p>
+  <div id="data">Loading…</div>
+  <script>
+  (async () => {
+    const url = '/.netlify/functions/soil-temp?name=25x4gcityw&depth=4&tz=America/Chicago';
+    try {
+      const res = await fetch(url);
+      const data = await res.json();
+      document.getElementById('data').textContent = JSON.stringify(data, null, 2);
+    } catch (e) {
+      document.getElementById('data').textContent = 'Demo data: High 79°F (3:00 PM), Low 56°F (6:00 AM), Avg 67°F';
+    }
+  })();
+  </script>
+</body>
+</html>
