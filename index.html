@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>6&quot; Soil Temperature</title>
+  <title>6&quot; Soil Temperature – Holdrege, NE</title>
 
   <!-- Inter font -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
@@ -40,7 +40,9 @@
       padding: 20px;
       text-align: center;
     }
-    .title { font-weight: 800; font-size: 20px; margin-bottom: 12px; }
+    .title { font-weight: 800; font-size: 20px; margin-bottom: 4px; }
+    .subtitle { font-size: 14px; font-weight: 600; margin-bottom: 2px; }
+    .location-note { font-size: 12px; color: var(--muted); margin-bottom: 14px; }
     .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
     .tile {
       background: rgba(255,255,255,0.03);
@@ -54,8 +56,6 @@
       font-weight: 700;
       color: var(--muted);
       margin-bottom: 4px;
-      text-transform: uppercase;
-      letter-spacing: .02em;
     }
     .tile .val {
       font-size: 28px;
@@ -75,10 +75,8 @@
     .section h3 {
       margin: 4px 0 10px 0;
       font-size: 14px;
-      font-weight: 800;
+      font-weight: 700;
       text-align: center;
-      text-transform: uppercase;
-      letter-spacing: .02em;
       color: var(--muted);
     }
     .trend-grid {
@@ -98,8 +96,6 @@
       font-weight: 700;
       color: var(--muted);
       margin-bottom: 6px;
-      text-transform: uppercase;
-      letter-spacing: .02em;
     }
     .trend-tile .t-val {
       font-size: 24px;
@@ -113,6 +109,8 @@
 <body>
   <div class="card">
     <div class="title">6&quot; Soil Temperature</div>
+    <div class="subtitle">Holdrege, NE</div>
+    <div class="location-note">Dryland corn stubble</div>
     <div id="content">Loading…</div>
   </div>
 
@@ -120,9 +118,7 @@
     (async () => {
       const loggerName = "25x4gcityw";        // your logger name
       const tz = "America/Chicago";           // output TZ
-      // cache-buster to avoid stale responses during testing
       const bust = Date.now();
-      // Pull 30 days so we can show both 7d & 30d trends
       const url = `/.netlify/functions/soil-temp?name=${encodeURIComponent(loggerName)}&tz=${encodeURIComponent(tz)}&days=30&_=${bust}`;
 
       const toF = c => Math.round((c * 9/5 + 32) * 10) / 10;
