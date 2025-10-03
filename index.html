@@ -2,8 +2,12 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>🌱 6" Soil Temperature</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>6" Soil Temperature</title>
+
+  <!-- Inter font -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+
   <style>
     :root {
       --bg: #0a1325;
@@ -25,10 +29,10 @@
       justify-content: center;
       background: var(--bg);
       color: #e6eef7;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
     }
     .card {
-      width: min(92vw, 460px);
+      width: min(92vw, 520px);
       background: var(--card);
       border: 1px solid var(--border);
       border-radius: 16px;
@@ -43,15 +47,18 @@
       border: 1px solid var(--divider);
       border-radius: 12px;
       padding: 12px;
+      text-align: center;
     }
     .tile .label {
       font-size: 12px;
       font-weight: 700;
       color: var(--muted);
       margin-bottom: 4px;
+      text-transform: uppercase;
+      letter-spacing: .02em;
     }
     .tile .val {
-      font-size: 26px;
+      font-size: 28px;
       font-weight: 900;
       margin: 2px 0;
     }
@@ -64,9 +71,9 @@
     .low .val { color: var(--lo); }
     .avg .val { color: var(--avg); }
 
-    /* Trends section */
+    /* Trends */
     .section h3 {
-      margin: 0 0 10px 0;
+      margin: 4px 0 10px 0;
       font-size: 14px;
       font-weight: 800;
       text-align: center;
@@ -91,6 +98,8 @@
       font-weight: 700;
       color: var(--muted);
       margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: .02em;
     }
     .trend-tile .t-val {
       font-size: 24px;
@@ -103,15 +112,17 @@
 </head>
 <body>
   <div class="card">
-    <div class="title">🌱 6" Soil Temperature</div>
+    <div class="title">6" Soil Temperature</div>
     <div id="content">Loading…</div>
   </div>
 
   <script>
     (async () => {
-      const loggerName = "25x4gcityw";   // your logger name
-      const tz = "America/Chicago";      // still fetches correctly
-      const url = `/.netlify/functions/soil-temp?name=${encodeURIComponent(loggerName)}&tz=${encodeURIComponent(tz)}&days=30`;
+      const loggerName = "25x4gcityw";         // your logger
+      const tz = "America/Chicago";            // output TZ
+      // If your timestamps are actually local device time, set parse=local
+      const parseMode = "utc";                 // "utc" or "local"
+      const url = `/.netlify/functions/soil-temp?name=${encodeURIComponent(loggerName)}&tz=${encodeURIComponent(tz)}&days=30&parse=${parseMode}`;
 
       const toF = c => Math.round((c * 9/5 + 32) * 10) / 10;
       const deltaToF = dc => Math.round((dc * 9/5) * 10) / 10;
@@ -148,7 +159,7 @@
             <div class="tile current">
               <div class="label">Current</div>
               <div class="val">${toF(data.current.value)}°F</div>
-              <div class="time">${data.current.time} CST</div>
+              <div class="time">${data.current.time}</div>
             </div>
             <div class="tile avg">
               <div class="label">Average (today)</div>
@@ -156,22 +167,24 @@
               <div class="time">${data.count ?? 0} readings</div>
             </div>
           </div>
+
           <div class="grid">
             <div class="tile high">
               <div class="label">High</div>
               <div class="val">${data.high ? toF(data.high.value) : "—"}°F</div>
-              <div class="time">${data.high ? data.high.time + " CST" : "—"}</div>
+              <div class="time">${data.high ? data.high.time : "—"}</div>
             </div>
             <div class="tile low">
               <div class="label">Low</div>
               <div class="val">${data.low ? toF(data.low.value) : "—"}°F</div>
-              <div class="time">${data.low ? data.low.time + " CST" : "—"}</div>
+              <div class="time">${data.low ? data.low.time : "—"}</div>
             </div>
           </div>
+
           <div class="section">
             <h3>Trends</h3>
             <div class="trend-grid">
-              ${trendTile("7-day", data.trend7d?.delta)}
+              ${trendTile("7-day",  data.trend7d?.delta)}
               ${trendTile("30-day", data.trend30d?.delta)}
             </div>
           </div>
