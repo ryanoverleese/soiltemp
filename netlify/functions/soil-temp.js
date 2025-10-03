@@ -24,6 +24,9 @@ exports.handler = async (event) => {
     }
     const csv = await r.text();
     const rows = parseCSV(csv);
+    if (params.debug === "1") {
+  return json(200, { header: rows[0] });
+}
     if (!rows.length) return json(200, { note: "No data" });
 
     // Find columns that look like depths in inches (e.g., "4 inches")
