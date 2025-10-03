@@ -63,6 +63,15 @@
   </style>
 </head>
 <body>
+  body {
+  margin: 0;              /* remove browser default margin */
+  padding: 0;             /* remove browser default padding */
+  display: flex;
+  justify-content: center; /* center horizontally */
+  align-items: center;     /* center vertically */
+  min-height: 100vh;       /* take full screen height */
+  background: linear-gradient(to bottom right, #00c6ff, #0072ff); /* keep your gradient */
+}
   <div class="card">
     <h1>🌱 4&quot; Soil Temperature</h1>
     <div id="content">Loading...</div>
