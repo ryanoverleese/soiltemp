@@ -49,9 +49,11 @@
 
   <script>
   (async () => {
-    const url = '/.netlify/functions/soil-temp?name=25x4gcityw&depth=4&tz=America/Chicago&to=F';
+    const url = '/.netlify/functions/soil-temp?name=25x4gcityw&depth=4&tz=America/Chicago';
     const res = await fetch(url);
     const data = await res.json();
+
+    const toF = c => Math.round((c * 9/5 + 32) * 10) / 10; // Celsius → Fahrenheit
 
     const card = document.getElementById('soil-card');
 
@@ -62,16 +64,16 @@
 
     card.innerHTML = `
       <h1>${data.depthRequestedIn}" Soil Temperature</h1>
-      <div class="stat">🌡 Current: <span class="value">${data.current.value} °F</span></div>
+      <div class="stat">🌡 Current: <span class="value">${toF(data.current.value)} °F</span></div>
       <div class="time">at ${data.current.time}</div>
 
-      <div class="stat">⬆ High: <span class="value">${data.high.value} °F</span></div>
+      <div class="stat">⬆ High: <span class="value">${toF(data.high.value)} °F</span></div>
       <div class="time">at ${data.high.time}</div>
 
-      <div class="stat">⬇ Low: <span class="value">${data.low.value} °F</span></div>
+      <div class="stat">⬇ Low: <span class="value">${toF(data.low.value)} °F</span></div>
       <div class="time">at ${data.low.time}</div>
 
-      <div class="stat">📊 Avg: <span class="value">${data.avg} °F</span></div>
+      <div class="stat">📊 Avg: <span class="value">${toF(data.avg)} °F</span></div>
     `;
   })();
   </script>
