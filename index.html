@@ -2,58 +2,70 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Soil Temperature</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>4&quot; Soil Temperature</title>
   <style>
     body {
       margin: 0;
-      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+      background: linear-gradient(135deg, #74ebd5, #9face6);
       display: flex;
       justify-content: center;
-      align-items: flex-start;   /* align near the top */
-      min-height: 100vh;
-      background: linear-gradient(135deg, #4facfe, #00f2fe);
-      font-family: Arial, sans-serif;
+      align-items: center;
+      height: 100vh;
     }
     .card {
       background: white;
-      margin-top: 40px;          /* space from very top */
-      padding: 2rem;
-      border-radius: 1.5rem;
-      box-shadow: 0 12px 40px rgba(0,0,0,0.2), 0 0 30px rgba(79,172,254,0.3);
-      text-align: center;
-      max-width: 350px;
+      border-radius: 20px;
+      padding: 24px;
+      max-width: 380px;
       width: 90%;
-      animation: fadeIn 1s ease-out;
+      text-align: center;
+      box-shadow: 0 12px 35px rgba(0, 0, 0, 0.15);
+      animation: fadeIn 0.6s ease-in-out;
     }
-    .card h1 {
-      font-size: 1.6rem;
-      margin-bottom: 1rem;
-      color: #2a5d8f;
+    h1 {
+      font-size: 22px;
+      margin-bottom: 12px;
+      color: #1e3a8a;
     }
-    .stat {
-      font-size: 1.2rem;
-      margin: 0.6rem 0;
+    .row {
+      margin: 16px 0;
+      padding: 12px;
+      border-radius: 12px;
+      background: #f9fafb;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      box-shadow: inset 0 0 6px rgba(0,0,0,0.04);
+    }
+    .label {
+      font-weight: 600;
+      margin-bottom: 4px;
     }
     .value {
+      font-size: 22px;
       font-weight: bold;
-      color: #111;
     }
     .time {
-      font-size: 0.9rem;
-      color: #666;
-      margin-bottom: 0.8rem;
+      font-size: 12px;
+      color: #6b7280;
+      margin-top: 2px;
     }
+    .current { color: #16a34a; }
+    .high { color: #e11d48; }
+    .low { color: #2563eb; }
+    .avg { color: #ca8a04; }
     @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(-20px); }
-      to   { opacity: 1; transform: translateY(0); }
+      from { opacity: 0; transform: translateY(15px); }
+      to { opacity: 1; transform: translateY(0); }
     }
   </style>
 </head>
 <body>
-  <div class="card" id="soil-card">
-    <h1>4" Soil Temperature</h1>
-    <p>Loading...</p>
+  <div class="card">
+    <h1>🌱 4&quot; Soil Temperature</h1>
+    <div id="content">Loading...</div>
   </div>
 
   <script>
@@ -62,27 +74,40 @@
     const res = await fetch(url);
     const data = await res.json();
 
-    const toF = c => Math.round((c * 9/5 + 32) * 10) / 10; // Celsius → Fahrenheit
+    const toF = c => Math.round((c * 9/5 + 32) * 10) / 10; // Convert °C → °F
 
-    const card = document.getElementById('soil-card');
+    const content = document.getElementById("content");
 
     if (data.error || data.note) {
-      card.innerHTML += `<p>${data.error || data.note}</p>`;
+      content.textContent = data.error || data.note;
       return;
     }
 
-    card.innerHTML = `
-      <h1>${data.depthRequestedIn}" Soil Temperature</h1>
-      <div class="stat">🌡 Current: <span class="value">${toF(data.current.value)} °F</span></div>
-      <div class="time">at ${data.current.time}</div>
+    const currentF = toF(data.current.value);
+    const highF = toF(data.high.value);
+    const lowF = toF(data.low.value);
+    const avgF = toF(data.avg);
 
-      <div class="stat">⬆ High: <span class="value">${toF(data.high.value)} °F</span></div>
-      <div class="time">at ${data.high.time}</div>
-
-      <div class="stat">⬇ Low: <span class="value">${toF(data.low.value)} °F</span></div>
-      <div class="time">at ${data.low.time}</div>
-
-      <div class="stat">📊 Avg: <span class="value">${toF(data.avg)} °F</span></div>
+    content.innerHTML = `
+      <div class="row current">
+        <div class="label">🌡 Current</div>
+        <div class="value">${currentF} °F</div>
+        <div class="time">at ${data.current.time}</div>
+      </div>
+      <div class="row high">
+        <div class="label">⬆ High</div>
+        <div class="value">${highF} °F</div>
+        <div class="time">at ${data.high.time}</div>
+      </div>
+      <div class="row low">
+        <div class="label">⬇ Low</div>
+        <div class="value">${lowF} °F</div>
+        <div class="time">at ${data.low.time}</div>
+      </div>
+      <div class="row avg">
+        <div class="label">📊 Average</div>
+        <div class="value">${avgF} °F</div>
+      </div>
     `;
   })();
   </script>
