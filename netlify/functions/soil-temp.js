@@ -1,27 +1,26 @@
 // netlify/functions/soil-temp.js
-// IrriMAX reader with DST-safe time formatting and selectable timestamp parsing.
+// IrriMAX Live reader with DST-safe local-time parsing, today stats, and 7/30-day trends.
+//
 // Query:
 //   ?name=LOGGER_NAME        (required)
-//   &depth=6                 (inches; optional; default 6)
-//   &tz=America/Chicago      (optional; default America/Chicago; for OUTPUT formatting)
-//   &days=30                 (optional; default 30; fetch window)
-//   &parse=utc|local         (optional; default "utc"; how to interpret source stamps)
-//   &debug=1                 (optional; show header only)
-//   &peek=1                  (optional; sample of raw/parsed times)
+//   &depth=6                 (inches; optional; default 6; nearest depth used)
+//   &tz=America/Chicago      (optional; default America/Chicago; OUTPUT timezone)
+//   &days=30                 (optional; default 30; fetch window length)
+//   &peek=1                  (optional; sample parsed times for debugging)
 
 exports.handler = async (event) => {
   try {
     const p = event.queryStringParameters || {};
     const name = p.name;
-    const depthReqIn = parseFloat(p.depth || "6");
-    const tz = p.tz || "America/Chicago";      // OUTPUT TZ
-    const days = Math.max(1, parseInt(p.days || "30", 10));
-    const parseMode = (p.parse || "utc").toLowerCase(); // 'utc' or 'local'
+    const depthReqIn = parseFloat(p.depth || "6");           // default view: 6"
+    const tz = p.tz || "America/Chicago";                    // OUTPUT tz
+    const days = Math.max(1, parseInt(p.days || "30", 10));  // fetch window
     const key = process.env.IRRIMAX_API_KEY;
 
     if (!name) return json(400, { error: "Missing ?name=LOGGER_NAME" });
     if (!key)  return json(500, { error: "Missing IRRIMAX_API_KEY env var" });
 
+    // Pull last N days
     const since = new Date(Date.now() - days * 24 * 3600 * 1000);
     const from = ymdHMS_utc(since);
 
@@ -38,95 +37,91 @@ exports.handler = async (event) => {
     const header = rows[0].map(x => String(x||"").trim());
     if (p.debug === "1") return json(200, { header });
 
-    // ---- find temp columns like T1(5), T2(15) cm ----
-    const cols = [];
+    // ---- find temp columns like T1(5), T2(15) (cm) ----
+    const cols = []; // {colIdx, depthInches}
     header.forEach((h, i) => {
       let m = h.match(/^T\d+\((\d+(?:\.\d+)?)\)\s*$/i);
-      if (m) { cols.push({ colIdx: i, depthInches: parseFloat(m[1]) / 2.54 }); return; }
+      if (m) {
+        cols.push({ colIdx: i, depthInches: parseFloat(m[1]) / 2.54 });
+        return;
+      }
       m = h.match(/(?:temp|temperature)[^0-9]*([0-9]+(?:\.\d+)?)\s*cm/i);
-      if (m) { cols.push({ colIdx: i, depthInches: parseFloat(m[1]) / 2.54 }); }
+      if (m) cols.push({ colIdx: i, depthInches: parseFloat(m[1]) / 2.54 });
     });
-    if (!cols.length) return json(500, { error: "No depth columns detected (expected T#(cm) headers)", header });
+    if (!cols.length) {
+      return json(500, { error: "No depth columns detected (expected T#(cm) headers)", header });
+    }
 
-    // nearest depth
+    // nearest depth in inches
     let mapped = cols[0];
     for (const c of cols) {
       if (Math.abs(c.depthInches - depthReqIn) < Math.abs(mapped.depthInches - depthReqIn)) mapped = c;
     }
 
-    // --- Timestamp parsers ---
-    function parseAsUTC(tsRaw) {
+    // --- Precise, DST-safe local-time parser ---
+    // Treat bare stamps (no Z or ±HH:MM) as *America/Chicago wall time*.
+    function parseLocalWallTime(tsRaw, timeZone = "America/Chicago") {
       const s = String(tsRaw).trim();
+
+      // If source already has zone, trust it.
       if (/[zZ]$/.test(s) || /[+\-]\d{2}:?\d{2}$/.test(s)) {
         const d = new Date(s);
         return isNaN(d) ? new Date(NaN) : d;
       }
-      const m = s.replace(/\//g, "-").replace(" ", "T")
-        .match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2}))?/);
-      if (m) {
-        const [, yy, MM, dd, hh, mm, ss] = m;
-        return new Date(Date.UTC(+yy, +MM - 1, +dd, +hh, +mm, +(ss || 0)));
-      }
-      const d = new Date(s + "Z");
-      return isNaN(d) ? new Date(NaN) : d;
-    }
 
-    // Interpret timestamp as if it was logged in the output tz (e.g., America/Chicago) with no offset.
-    function parseAsLocalTZ(tsRaw, timeZone = tz) {
-      const s = String(tsRaw).trim();
+      // Accept "YYYY-MM-DD HH:MM[:SS]" (or "/" and/or "T")
       const m = s.replace(/\//g, "-").replace(" ", "T")
-        .match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2}))?/);
-      if (!m) {
-        // if it already has Z/offset, just use it
-        if (/[zZ]$/.test(s) || /[+\-]\d{2}:?\d{2}$/.test(s)) {
-          const d = new Date(s);
-          return isNaN(d) ? new Date(NaN) : d;
-        }
-        return new Date(NaN);
-      }
-      const [, yy, MM, dd, hh, mm, ss] = m.map(x => +x || 0);
-      // Build a date as if those fields are in the target tz, then convert to UTC ms:
+        .match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2}))?$/);
+      if (!m) return new Date(NaN);
+
+      const want = {
+        Y: +m[1], M: +m[2], D: +m[3],
+        h: +m[4], i: +m[5], s: +(m[6] || 0)
+      };
+
+      // 1) UTC "guess" for that wall time
+      const guessMs = Date.UTC(want.Y, want.M - 1, want.D, want.h, want.i, want.s);
+
+      // 2) Format that guess in the target TZ to see what wall time it produces
       const fmt = new Intl.DateTimeFormat("en-US", {
         timeZone,
         year: "numeric", month: "2-digit", day: "2-digit",
         hour: "2-digit", minute: "2-digit", second: "2-digit",
         hour12: false
       });
-      // Create a Date in UTC from those components by finding the offset:
-      // Construct a date in UTC first:
-      const pretendUTC = new Date(Date.UTC(yy, MM - 1, dd, hh, mm, ss));
-      // Find what local time that UTC instant shows in the target TZ
-      // If it doesn't match the intended wall-clock, adjust by the diff:
-      const parts = Object.fromEntries(fmt.formatToParts(pretendUTC).map(p => [p.type, p.value]));
-      const got = {
-        Y: +parts.year, M: +parts.month, D: +parts.day,
-        h: +parts.hour, m: +parts.minute, s: +parts.second
-      };
-      const delta =
-        ((yy - got.Y) * 365*24*3600 +
-         (MM - got.M) * 31*24*3600 +
-         (dd - got.D) * 24*3600 +
-         (hh - got.h) * 3600 +
-         (mm - got.m) * 60 +
-         (ss - got.s)) * 1000;
-      return new Date(pretendUTC.getTime() - delta);
-    }
+      const partsObj = (date) =>
+        Object.fromEntries(fmt.formatToParts(date).map(p => [p.type, p.value]));
 
-    const parseTs = (parseMode === "local") ? parseAsLocalTZ : parseAsUTC;
+      const got = partsObj(new Date(guessMs));
+      const gotMs = Date.UTC(+got.year, +got.month - 1, +got.day, +got.hour, +got.minute, +got.second);
+
+      // 3) Difference between intended wall time and produced wall time
+      const wantMs = Date.UTC(want.Y, want.M - 1, want.D, want.h, want.i, want.s);
+      const deltaMs = wantMs - gotMs;
+
+      // 4) Correct the UTC guess by that delta
+      return new Date(guessMs + deltaMs);
+    }
 
     // build readings
     const readings = []; // { ts: Date, temp: number, raw: string }
-    const dateIdx = 0;
+    const dateIdx = 0; // "Date Time" typically first column
     for (let i = 1; i < rows.length; i++) {
       const r = rows[i];
       const tsRaw = r[dateIdx];
       if (!tsRaw) continue;
-      const d = parseTs(tsRaw);
+      const d = parseLocalWallTime(tsRaw, "America/Chicago");
       if (isNaN(d)) continue;
+
       const v = parseFloat(r[mapped.colIdx]);
       if (Number.isFinite(v)) readings.push({ ts: d, temp: v, raw: tsRaw });
     }
 
+    if (!readings.length) {
+      return json(200, { error: "No readings parsed.", header });
+    }
+
+    // optional peek to diagnose parsing
     if (p.peek === "1") {
       const sample = readings.slice(-6).map(x => ({
         raw: x.raw,
@@ -135,14 +130,14 @@ exports.handler = async (event) => {
           timeZone: tz, dateStyle: "short", timeStyle: "short"
         }).format(x.ts)
       }));
-      return json(200, { header, parseMode, mappedColumn: header[mapped.colIdx], depthMappedIn: round1(mapped.depthInches), sample });
+      return json(200, { header, mappedColumn: header[mapped.colIdx], depthMappedIn: round1(mapped.depthInches), sample });
     }
 
-    if (!readings.length) return json(200, { error: "No readings parsed.", header, parseMode });
-
+    // sort & pick absolute latest
     readings.sort((a,b) => a.ts - b.ts);
     const latest = readings[readings.length - 1];
 
+    // compute today's stats in target tz
     const todayKey = dateOnly_tz(new Date(), tz);
     const todayReadings = readings.filter(r => dateOnly_tz(r.ts, tz) === todayKey);
 
@@ -154,7 +149,7 @@ exports.handler = async (event) => {
     }
     const avgToday = todayReadings.length ? sum / todayReadings.length : null;
 
-    // trends: latest minus average over 7/30 days
+    // trends: latest minus average over 7/30 days (rolling windows)
     const nowMs = Date.now();
     const avgOver = (daysBack) => {
       const cutoff = nowMs - daysBack * 24 * 3600 * 1000;
@@ -167,7 +162,7 @@ exports.handler = async (event) => {
     const delta7  = (avg7  == null) ? null : (latest.temp - avg7);
     const delta30 = (avg30 == null) ? null : (latest.temp - avg30);
 
-    // format times in requested TZ with DST label
+    // format times in requested TZ with short zone name (CDT/CST)
     const fmtTime = (d) => new Intl.DateTimeFormat("en-US", {
       timeZone: tz, hour: "numeric", minute: "2-digit", timeZoneName: "short"
     }).format(d);
@@ -175,8 +170,7 @@ exports.handler = async (event) => {
     return json(200, {
       name,
       tz,
-      parseMode,
-      units: "as-reported",
+      units: "as-reported",               // temperatures returned in API's native units (usually °C)
       depthRequestedIn: depthReqIn,
       depthMappedIn: round1(mapped.depthInches),
       columnHeader: header[mapped.colIdx],
