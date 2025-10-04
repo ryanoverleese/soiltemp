@@ -10,157 +10,91 @@
 
   <style>
     :root {
-      --page: #f7f9fc;
-      --card: #ffffff;
-      --border: #e6ecf5;
-      --shadow: rgba(15, 23, 42, 0.06);
-      --text: #0f172a;
-      --muted: #5b6b80;
-      --ok: #33d17a;
-      --hi: #ff5577;
-      --lo: #4ea3ff;
-      --avg: #ffbf47;
+      --page:#f7f9fc; --card:#ffffff; --border:#e6ecf5; --shadow:rgba(15,23,42,.06);
+      --text:#0f172a; --muted:#5b6b80;
+      --ok:#33d17a; --hi:#ff5577; --lo:#4ea3ff; --avg:#ffbf47;
     }
 
-    * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: var(--page);
-      color: var(--text);
-      font-family: 'Inter', sans-serif;
+    *{ box-sizing:border-box; }
+    body{
+      margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center;
+      background:var(--page); color:var(--text); font-family:'Inter',system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
     }
 
-    .card {
-      width: min(92vw, 560px);
-      background: var(--card);
-      border: 1px solid var(--border);
-      box-shadow: 0 8px 24px var(--shadow);
-      border-radius: 14px;
-      padding: 24px;
-      text-align: center;
+    .card{
+      width:min(92vw,560px); background:var(--card); border:1px solid var(--border);
+      box-shadow:0 8px 24px var(--shadow); border-radius:14px; padding:20px; /* tighter */
+      text-align:center;
     }
 
-    .title { font-weight: 800; font-size: 26px; margin: 0 0 2px; }
-    .subtitle { font-size: 16px; font-weight: 600; opacity: .9; margin: 0 0 2px; }
-    .location-note { font-size: 13px; color: var(--muted); margin: 0 0 16px; }
+    .title{ font-weight:800; font-size:26px; margin:0 0 0 }
+    .subtitle{ font-size:16px; font-weight:600; opacity:.9; margin:2px 0 0 }
+    .location-note{ font-size:13px; color:var(--muted); margin:6px 0 10px }
 
-    .divider {
-      border-top: 1px solid var(--border);
-      margin: 20px 0 16px;
-    }
+    .divider{ border-top:1px solid var(--border); margin:14px 0 10px }
 
-    h2 {
-      font-size: 18px;
-      font-weight: 800;
-      margin: 4px 0 12px;
-    }
+    h2{ font-size:18px; font-weight:800; margin:8px 0 8px }
 
-    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px; }
-    .tile {
-      background: #fff;
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 12px 12px 10px;
-      text-align: center;
+    .grid{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px }
+    .tile{
+      background:#fff; border:1px solid var(--border); border-radius:12px;
+      padding:10px 10px 8px; /* tighter */
+      text-align:center;
     }
-    .label { font-size: 12px; font-weight: 700; color: var(--muted); margin-bottom: 4px; }
-    .val { font-size: 28px; font-weight: 900; margin: 2px 0 0; }
-    .time { font-size: 12px; color: var(--muted); margin-top: 4px; }
-    .current .val { color: var(--ok); }
-    .high .val { color: var(--hi); }
-    .low .val { color: var(--lo); }
-    .avg .val { color: var(--avg); }
+    .label{ font-size:12px; font-weight:700; color:var(--muted); margin-bottom:2px }
+    .val{ font-size:28px; font-weight:900; margin:0 }   /* keep big number size */
+    .time{ font-size:12px; color:var(--muted); margin-top:3px }
+    .current .val{ color:var(--ok) } .high .val{ color:var(--hi) } .low .val{ color:var(--lo) } .avg .val{ color:var(--avg) }
 
-    .trend-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 6px; }
-    .trend-tile {
-      background: #fff;
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 12px;
-    }
-    .t-label { font-size: 12px; font-weight: 700; color: var(--muted); margin-bottom: 6px; }
-    .t-val { font-size: 24px; font-weight: 900; line-height: 1.1; }
-    .t-up { color: var(--avg); }
-    .t-down { color: var(--lo); }
+    .trend-grid{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:6px }
+    .trend-tile{ background:#fff; border:1px solid var(--border); border-radius:12px; padding:10px }
+    .t-label{ font-size:12px; font-weight:700; color:var(--muted); margin-bottom:4px }
+    .t-val{ font-size:24px; font-weight:900; line-height:1.05 }
+    .t-up{ color:var(--avg) } .t-down{ color:var(--lo) }
 
-    /* Moisture section */
-    .m-tile {
-      background: #fff;
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 14px;
-      text-align: left;
-      margin-bottom: 12px;
+    /* --- Moisture tiles --- */
+    .m-tile{
+      background:#fff; border:1px solid var(--border); border-radius:12px;
+      padding:12px; /* tighter */
+      text-align:left; margin-bottom:10px;
     }
-    .m-label { font-weight: 700; font-size: 13px; margin-bottom: 6px; }
-    .m-bar {
-      height: 14px;
-      border-radius: 8px;
-      background: linear-gradient(to right, #f1c232, #33d17a, #4ea3ff);
-      position: relative;
-    }
-    .m-marker {
-      position: absolute;
-      top: 50%;
-      transform: translate(-50%, -50%);
-      border-radius: 50%;
-    }
-    .m-marker.current { background: #000; width: 14px; height: 14px; }
-    .m-marker.avg { background: #fff; border: 2px solid #000; width: 12px; height: 12px; }
-    .m-scale {
-      display: flex;
-      justify-content: space-between;
-      font-size: 12px;
-      color: var(--muted);
-      margin-top: 8px;
-    }
-    .m-legend {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      gap: 16px;
-      font-size: 12px;
-      color: var(--muted);
-      margin-top: 8px;
-    }
-    .m-legend span {
-      display: flex;
-      align-items: center;
-      gap: 4px;
-    }
-    .footnote {
-      font-size: 11px;
-      color: var(--muted);
-      margin-top: 10px;
+    .m-label{ font-weight:800; font-size:13px; margin-bottom:6px }
+    .m-bar{
+      position:relative; height:12px; /* was 14px */
+      border-radius:999px; overflow:hidden;
+      background:linear-gradient(to right,#b94c1d 0%, #e0b750 40%, #3fa7d6 100%);
+      filter:contrast(1.1) brightness(1.05);
     }
 
-    /* --- Compact mobile mode --- */
-    @media (max-width: 420px) {
-      .card{ padding:16px; }
-      .title{ font-size:22px; margin-bottom:0 }
-      .subtitle{ font-size:14px; margin-bottom:0 }
-      .location-note{ font-size:12px; margin-bottom:10px }
-      h2{ font-size:16px !important; margin-top:12px !important; margin-bottom:6px !important; }
-      .grid{ gap:8px; margin-bottom:10px }
-      .tile{ padding:10px 10px 8px; border-radius:10px }
-      .label{ font-size:11px; margin-bottom:2px }
-      .val{ font-size:24px; line-height:1; margin-top:0 }
-      .time{ font-size:11px; margin-top:2px }
-      .trend-grid{ gap:8px }
-      .trend-tile{ padding:10px; border-radius:10px }
-      .t-label{ font-size:11px; margin-bottom:4px }
+    /* bar markers (absolute in the bar) */
+    .m-marker{ position:absolute; top:50%; transform:translate(-50%,-50%); border-radius:50% }
+    .m-marker.current{ width:12px; height:12px; background:#0f172a; border:2px solid #fff; box-shadow:0 2px 4px rgba(0,0,0,0.18) }
+    .m-marker.avg{ width:10px; height:10px; background:#fff; border:2px solid #0f172a }
+
+    .m-scale{ display:flex; justify-content:space-between; font-size:12px; color:var(--muted); margin-top:6px }
+
+    /* legend dots (separate from bar markers – inline, not absolute) */
+    .m-legend{ display:flex; justify-content:center; gap:14px; font-size:12px; color:var(--muted); margin-top:6px }
+    .legend-item{ display:inline-flex; align-items:center; gap:6px }
+    .legend-dot{ display:inline-block; width:10px; height:10px; border-radius:50% }
+    .legend-dot.cur{ background:#0f172a; box-shadow:0 0 0 2px #fff inset }
+    .legend-dot.avg{ background:#fff; border:2px solid #0f172a }
+
+    .footnote{ font-size:11px; color:#6b7280; margin-top:8px }
+
+    /* Compact mobile mode */
+    @media (max-width:420px){
+      .card{ padding:16px }
+      .title{ font-size:22px }
+      .subtitle{ font-size:14px }
+      .location-note{ font-size:12px }
+      h2{ font-size:16px; margin:8px 0 6px }
+      .trend-tile{ padding:9px }
       .t-val{ font-size:20px }
-      .divider{ margin:12px 0 10px }
-      .m-tile{ padding:12px; border-radius:10px; margin-bottom:10px }
+      .m-tile{ padding:10px }
       .m-bar{ height:10px }
-      .m-marker.current{ width:12px; height:12px }
-      .m-marker.avg{ width:10px; height:10px }
-      .m-scale{ font-size:11px; margin-top:6px }
-      .m-legend{ gap:12px; font-size:11px }
+      .m-marker.current{ width:11px; height:11px }
+      .m-marker.avg{ width:9px; height:9px }
       .footnote{ display:none }
     }
   </style>
@@ -171,7 +105,14 @@
     <div class="subtitle">Holdrege, NE</div>
     <div class="location-note">Dryland corn stubble</div>
 
+    <h2>Temperature</h2>
     <div id="content">Gathering the latest data…</div>
+
+    <div class="divider"></div>
+
+    <h2>Moisture</h2>
+    <div id="moisture">Gathering the latest data…</div>
+
     <div class="footnote">Data refreshes automatically every 3 hours throughout the day.</div>
   </div>
 
@@ -181,74 +122,97 @@
       const tz = "America/Chicago";
       const bust = Date.now();
 
-      const tempUrl = `/.netlify/functions/soil-temp?name=${loggerName}&tz=${encodeURIComponent(tz)}&days=30&_=${bust}`;
-      const moistUrl = `/.netlify/functions/soil-moisture?name=${loggerName}&depths=6,22&_=${bust}`;
+      const tempUrl  = `/.netlify/functions/soil-temp?name=${encodeURIComponent(loggerName)}&tz=${encodeURIComponent(tz)}&days=30&_=${bust}`;
+      const moistUrl = `/.netlify/functions/soil-moisture?name=${encodeURIComponent(loggerName)}&depths=6,22&days=30&_=${bust}`;
 
       const toF = c => Math.round((c * 9/5 + 32) * 10) / 10;
       const deltaToF = dc => Math.round((dc * 9/5) * 10) / 10;
       const signed = n => (n > 0 ? `+${n}` : `${n}`);
 
-      try {
-        const [tempRes, moistRes] = await Promise.all([fetch(tempUrl), fetch(moistUrl)]);
-        const [temp, moist] = await Promise.all([tempRes.json(), moistRes.json()]);
+      // Moisture windows you set
+      const MOIST_THRESH = {
+        6:  { low: 24.08, high: 48.35 },
+        22: { low: 48.39, high: 54.66 }
+      };
+      function scaleToBar(val, depth){
+        const t = MOIST_THRESH[depth]; if(!t || !Number.isFinite(val)) return 50;
+        const pct = ((val - t.low) / (t.high - t.low)) * 100;
+        return Math.max(0, Math.min(100, pct));
+      }
 
+      try{
+        const [tRes, mRes] = await Promise.all([fetch(tempUrl), fetch(moistUrl)]);
+        const [temp, moist] = await Promise.all([tRes.json(), mRes.json()]);
+
+        // --- Temperature ---
         const trendTile = (label, deltaC) => {
-          if (deltaC === null || deltaC === undefined)
-            return `<div class="trend-tile"><div class="t-label">${label}</div><div class="t-val">—</div></div>`;
-          const dF = deltaToF(deltaC);
-          const cls = dF >= 0 ? "t-up" : "t-down";
+          if (deltaC == null) return `<div class="trend-tile"><div class="t-label">${label}</div><div class="t-val">—</div></div>`;
+          const dF = deltaToF(deltaC); const cls = dF >= 0 ? "t-up" : "t-down";
           return `<div class="trend-tile"><div class="t-label">${label}</div><div class="t-val ${cls}">${signed(dF.toFixed(1))}°</div></div>`;
         };
 
-        const moistureBar = (depthLabel, current, avg, low, high) => {
-          const pct = v => ((v - low) / (high - low)) * 100;
-          const curPos = Math.min(100, Math.max(0, pct(current)));
-          const avgPos = Math.min(100, Math.max(0, pct(avg)));
-
-          return `
-            <div class="m-tile">
-              <div class="m-label">${depthLabel} soil moisture</div>
-              <div class="m-bar">
-                <div class="m-marker current" style="left:${curPos}%"></div>
-                <div class="m-marker avg" style="left:${avgPos}%"></div>
-              </div>
-              <div class="m-scale"><span>Dry</span><span>Wet</span></div>
-              <div class="m-legend">
-                <span><div class="m-marker current"></div> Current</span>
-                <span><div class="m-marker avg"></div> 30-day avg</span>
-              </div>
-            </div>
-          `;
-        };
-
         document.getElementById("content").innerHTML = `
-          <h2>Temperature</h2>
           <div class="grid">
-            <div class="tile current"><div class="label">Current</div><div class="val">${toF(temp.current.value)}°F</div><div class="time">${temp.current.time}</div></div>
-            <div class="tile avg"><div class="label">Average (today)</div><div class="val">${toF(temp.avg)}°F</div><div class="time">${temp.count} readings</div></div>
+            <div class="tile current">
+              <div class="label">Current</div>
+              <div class="val">${toF(temp.current.value)}°F</div>
+              <div class="time">${temp.current.time}</div>
+            </div>
+            <div class="tile avg">
+              <div class="label">Average (today)</div>
+              <div class="val">${temp.avg != null ? toF(temp.avg) : "—"}°F</div>
+              <div class="time">${temp.count ?? 0} readings</div>
+            </div>
           </div>
+
           <div class="grid">
-            <div class="tile high"><div class="label">High</div><div class="val">${toF(temp.high.value)}°F</div><div class="time">${temp.high.time}</div></div>
-            <div class="tile low"><div class="label">Low</div><div class="val">${toF(temp.low.value)}°F</div><div class="time">${temp.low.time}</div></div>
+            <div class="tile high">
+              <div class="label">High</div>
+              <div class="val">${temp.high ? toF(temp.high.value) : "—"}°F</div>
+              <div class="time">${temp.high ? temp.high.time : "—"}</div>
+            </div>
+            <div class="tile low">
+              <div class="label">Low</div>
+              <div class="val">${temp.low ? toF(temp.low.value) : "—"}°F</div>
+              <div class="time">${temp.low ? temp.low.time : "—"}</div>
+            </div>
           </div>
+
           <div class="trend-grid">
-            ${trendTile("7-day trend", temp.trend7d?.delta)}
+            ${trendTile("7-day trend",  temp.trend7d?.delta)}
             ${trendTile("30-day trend", temp.trend30d?.delta)}
           </div>
-
-          <div class="divider"></div>
-          <h2>Moisture</h2>
-          ${moist.depths.map(d =>
-            moistureBar(
-              `${d.depthIn}″`,
-              d.vwc,
-              d.avg30,
-              d.depthIn === 6 ? 20 : 48,
-              d.depthIn === 6 ? 47 : 55
-            )
-          ).join("")}
         `;
-      } catch (e) {
+
+        // --- Moisture ---
+        const mEl = document.getElementById("moisture");
+        if (moist.error || !moist.depths?.length){
+          mEl.innerHTML = `<div class="tile" style="text-align:center">No moisture data.</div>`;
+        } else {
+          mEl.innerHTML = moist.depths.map(d => {
+            const cur = Number.isFinite(d.vwc)   ? d.vwc   : null;
+            const avg = Number.isFinite(d.avg30) ? d.avg30 : null;
+            const leftCur = cur != null ? scaleToBar(cur, d.depthIn) : null;
+            const leftAvg = avg != null ? scaleToBar(avg, d.depthIn) : null;
+
+            return `
+              <div class="m-tile">
+                <div class="m-label">${Math.round(d.mappedDepthIn)}″ depth</div>
+                <div class="m-bar">
+                  ${leftAvg!=null ? `<div class="m-marker avg" style="left:${leftAvg}%;"></div>` : ""}
+                  ${leftCur!=null ? `<div class="m-marker current" style="left:${leftCur}%;"></div>` : ""}
+                </div>
+                <div class="m-scale"><span>Dry</span><span>Wet</span></div>
+                <div class="m-legend">
+                  <span class="legend-item"><span class="legend-dot cur"></span>Current</span>
+                  <span class="legend-item"><span class="legend-dot avg"></span>30-day avg</span>
+                </div>
+              </div>
+            `;
+          }).join("");
+        }
+
+      } catch(e){
         document.getElementById("content").textContent = "Fetch error: " + e.message;
       }
     })();
