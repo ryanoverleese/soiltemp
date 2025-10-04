@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>6&quot; Soil Temperature – Holdrege, NE</title>
+  <title>Soil Insights – Holdrege, NE</title>
 
   <!-- Inter font -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
@@ -13,9 +13,6 @@
       --page:#f7f9fc; --card:#fff; --border:#e6ecf5; --shadow:rgba(15,23,42,.06);
       --text:#0f172a; --muted:#5b6b80;
       --ok:#33d17a; --hi:#ff5577; --lo:#4ea3ff; --avg:#ffbf47;
-
-      /* Moisture visuals */
-      --track:#eef2f7;
     }
     *{box-sizing:border-box}
     body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--page);color:var(--text);font-family:'Inter',system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
@@ -60,22 +57,27 @@
     .m-marker.avg{
       width:12px;height:12px;background:#fff;border:2px solid #0f172a;
       opacity:.95;z-index:1;
+      margin-right:6px; /* space before label */
     }
-    .m-scale{display:flex;justify-content:space-between;gap:0;width:100%;font-size:12px;color:var(--muted);margin-top:8px}
+    .m-scale{display:flex;justify-content:space-between;width:100%;font-size:12px;color:var(--muted);margin-top:8px}
     .m-legend{margin-top:8px;display:flex;justify-content:center;gap:16px;font-size:12px;color:var(--muted)}
     .m-legend .dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:-1px}
     .m-legend .cur{background:#0f172a;box-shadow:0 0 0 2px #fff}
-    .m-legend .avg{display:inline-block;width:10px;height:10px;border:2px solid #0f172a;background:#fff;border-radius:50%}
+    .m-legend .avg{display:inline-block;width:10px;height:10px;border:2px solid #0f172a;background:#fff;border-radius:50%;margin-right:6px}
     .err{color:#b91c1c;font-weight:700}
   </style>
 </head>
 <body>
   <div class="card">
-    <h1 class="title">6&quot; Soil Temperature</h1>
+    <h1 class="title">Soil Insights</h1>
     <div class="subtitle">Holdrege, NE</div>
     <div class="location-note">Dryland corn stubble</div>
 
+    <h2 style="margin-top:18px;margin-bottom:8px;font-size:18px;font-weight:800;color:#0f172a;">Temperature</h2>
     <div id="content">Loading…</div>
+
+    <h2 style="margin-top:24px;margin-bottom:8px;font-size:18px;font-weight:800;color:#0f172a;">Moisture</h2>
+    <div id="moisture">Loading moisture data…</div>
   </div>
 
   <script>
@@ -92,7 +94,6 @@
       const deltaToF = dc => Math.round((dc * 9/5) * 10) / 10;
       const signed = n => (n > 0 ? `+${n}` : `${n}`);
 
-      // Moisture windows confirmed from your sheet:
       const MOIST_THRESH = {
         6:  { low: 24.08, high: 48.35 },
         22: { low: 48.39, high: 54.66 },
@@ -104,7 +105,7 @@
         const denom = Math.max(1e-6, high - low);
         let x = (value - low) / denom;
         x = Math.max(0, Math.min(1, x));
-        return x * 100; // %
+        return x * 100;
       }
 
       async function fetchJson(url){
@@ -164,14 +165,8 @@
               ${trendTile("30-day", data.trend30d?.delta)}
             </div>
           </div>
-
-          <div class="section m-section">
-            <h3>Soil moisture</h3>
-            <div id="moisture"></div>
-          </div>
         `;
 
-        // Moisture visuals
         const cont = document.getElementById("moisture");
         if (moist.error || !moist.depths?.length) {
           cont.innerHTML = `<div class="err">${moist.error || "No moisture data."}</div>`;
@@ -185,7 +180,7 @@
 
             return `
               <div class="m-tile">
-                <div class="m-row"><div class="m-label">${d.mappedDepthIn}&Prime; soil moisture</div></div>
+                <div class="m-row"><div class="m-label">${Math.round(d.mappedDepthIn)}″ depth</div></div>
                 <div class="m-bar">
                   ${posAvg!==null ? `<div class="m-marker avg"     style="left:${posAvg}%;"></div>` : ""}
                   ${posCur!==null ? `<div class="m-marker current" style="left:${posCur}%;"></div>` : ""}
