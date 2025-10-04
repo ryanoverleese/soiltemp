@@ -30,12 +30,19 @@
     .current .val{color:var(--ok)} .high .val{color:var(--hi)} .low .val{color:var(--lo)} .avg .val{color:var(--avg)}
 
     .section{margin-top:6px}
-    .section h3{margin:6px 0 10px;font-size:15px;font-weight:800;color:var(--text)}
     .trend-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
     .trend-tile{background:#fff;border:1px solid var(--border);border-radius:12px;padding:12px}
     .t-label{font-size:12px;font-weight:700;color:var(--muted);margin-bottom:6px}
     .t-val{font-size:24px;font-weight:900;line-height:1.1}
     .t-up{color:var(--avg)} .t-down{color:var(--lo)}
+
+    /* Divider between sections */
+    .divider{
+      margin:18px 0 16px;
+      border:0;
+      height:1px;
+      background:linear-gradient(to right, transparent, #e6ecf5, transparent);
+    }
 
     /* --- Moisture bars --- */
     .m-section h3{margin-top:14px}
@@ -57,14 +64,19 @@
     .m-marker.avg{
       width:12px;height:12px;background:#fff;border:2px solid #0f172a;
       opacity:.95;z-index:1;
-      margin-right:6px; /* space before label */
     }
     .m-scale{display:flex;justify-content:space-between;width:100%;font-size:12px;color:var(--muted);margin-top:8px}
-    .m-legend{margin-top:8px;display:flex;justify-content:center;gap:16px;font-size:12px;color:var(--muted)}
+    .m-legend{margin-top:8px;display:flex;justify-content:center;gap:18px;font-size:12px;color:var(--muted)}
     .m-legend .dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:-1px}
     .m-legend .cur{background:#0f172a;box-shadow:0 0 0 2px #fff}
     .m-legend .avg{display:inline-block;width:10px;height:10px;border:2px solid #0f172a;background:#fff;border-radius:50%;margin-right:6px}
     .err{color:#b91c1c;font-weight:700}
+
+    .footnote{
+      margin-top:14px;
+      font-size:11px;
+      color:#6b7280;
+    }
   </style>
 </head>
 <body>
@@ -74,10 +86,14 @@
     <div class="location-note">Dryland corn stubble</div>
 
     <h2 style="margin-top:18px;margin-bottom:8px;font-size:18px;font-weight:800;color:#0f172a;">Temperature</h2>
-    <div id="content">Loading…</div>
+    <div id="content">Gathering the latest data…</div>
 
-    <h2 style="margin-top:24px;margin-bottom:8px;font-size:18px;font-weight:800;color:#0f172a;">Moisture</h2>
-    <div id="moisture">Loading moisture data…</div>
+    <hr class="divider" />
+
+    <h2 style="margin-top:8px;margin-bottom:8px;font-size:18px;font-weight:800;color:#0f172a;">Moisture</h2>
+    <div id="moisture">Gathering the latest data…</div>
+
+    <div class="footnote">Note: Data refreshes every 3 hours throughout the day.</div>
   </div>
 
   <script>
@@ -94,6 +110,7 @@
       const deltaToF = dc => Math.round((dc * 9/5) * 10) / 10;
       const signed = n => (n > 0 ? `+${n}` : `${n}`);
 
+      // Moisture windows confirmed:
       const MOIST_THRESH = {
         6:  { low: 24.08, high: 48.35 },
         22: { low: 48.39, high: 54.66 },
@@ -121,6 +138,7 @@
       try{
         const [data, moist] = await Promise.all([fetchJson(urlTemp), fetchJson(urlMoist)]);
 
+        // Build trend tiles with explicit labels (no "Trends" header)
         const trendTile = (label, deltaC) => {
           if (deltaC == null) {
             return `<div class="trend-tile"><div class="t-label">${label}</div><div class="t-val">—</div></div>`;
@@ -130,6 +148,7 @@
           return `<div class="trend-tile"><div class="t-label">${label}</div><div class="t-val ${cls}">${signed(dF.toFixed(1))}°</div></div>`;
         };
 
+        // Temperature content
         const contentEl = document.getElementById("content");
         contentEl.innerHTML = `
           <div class="grid">
@@ -158,15 +177,13 @@
             </div>
           </div>
 
-          <div class="section">
-            <h3>Trends</h3>
-            <div class="trend-grid">
-              ${trendTile("7-day",  data.trend7d?.delta)}
-              ${trendTile("30-day", data.trend30d?.delta)}
-            </div>
+          <div class="trend-grid">
+            ${trendTile("7-day trend",  data.trend7d?.delta)}
+            ${trendTile("30-day trend", data.trend30d?.delta)}
           </div>
         `;
 
+        // Moisture content
         const cont = document.getElementById("moisture");
         if (moist.error || !moist.depths?.length) {
           cont.innerHTML = `<div class="err">${moist.error || "No moisture data."}</div>`;
