@@ -3,145 +3,206 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Soil Moisture – Holdrege, NE</title>
+  <title>6&quot; Soil Temperature – Holdrege, NE</title>
 
   <!-- Inter font -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
 
   <style>
     :root{
-      --text: #0f172a;
-      --muted: #5b6b80;
-      --border: #e6ecf5;
-      --shadow: rgba(15, 23, 42, 0.06);
-    }
+      --page:#f7f9fc; --card:#fff; --border:#e6ecf5; --shadow:rgba(15,23,42,.06);
+      --text:#0f172a; --muted:#5b6b80;
+      --ok:#33d17a; --hi:#ff5577; --lo:#4ea3ff; --avg:#ffbf47;
 
-    body{
-      margin:0;
-      min-height:100vh;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      background:#f7f9fc;
-      color:var(--text);
-      font-family:'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+      /* Moisture visuals */
+      --track:#eef2f7;
     }
+    *{box-sizing:border-box}
+    body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--page);color:var(--text);font-family:'Inter',system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+    .card{width:min(92vw,560px);background:var(--card);border:1px solid var(--border);box-shadow:0 8px 24px var(--shadow);border-radius:14px;padding:24px;text-align:center}
 
-    .card{
-      width:min(92vw, 560px);
-      background:#fff;
-      border:1px solid var(--border);
-      box-shadow:0 8px 24px var(--shadow);
-      border-radius:14px;
-      padding:24px;
-      text-align:center;
-    }
+    .title{font-weight:800;font-size:26px;margin:0 0 2px}
+    .subtitle{font-size:16px;font-weight:600;opacity:.9;margin:0 0 2px}
+    .location-note{font-size:13px;color:var(--muted);margin:0 0 16px}
 
-    h1{ font-weight:800; font-size:26px; margin:0 0 2px }
-    .subtitle{ font-size:16px; font-weight:600; opacity:.9; margin:0 0 2px }
-    .note{ font-size:13px; color:var(--muted); margin:0 0 20px }
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px}
+    .tile{background:#fff;border:1px solid var(--border);border-radius:12px;padding:12px 12px 10px;text-align:center}
+    .label{font-size:12px;font-weight:700;color:var(--muted);margin-bottom:4px}
+    .val{font-size:28px;font-weight:900;margin:2px 0 0}
+    .time{font-size:12px;color:var(--muted);margin-top:4px}
+    .current .val{color:var(--ok)} .high .val{color:var(--hi)} .low .val{color:var(--lo)} .avg .val{color:var(--avg)}
 
-    /* --- Moisture Bar --- */
-    .moisture-section{
-      margin-top:20px;
-    }
-    .m-wrap{
-      margin:20px 0;
-      position:relative;
-    }
+    .section{margin-top:6px}
+    .section h3{margin:6px 0 10px;font-size:15px;font-weight:800;color:var(--text)}
+    .trend-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .trend-tile{background:#fff;border:1px solid var(--border);border-radius:12px;padding:12px}
+    .t-label{font-size:12px;font-weight:700;color:var(--muted);margin-bottom:6px}
+    .t-val{font-size:24px;font-weight:900;line-height:1.1}
+    .t-up{color:var(--avg)} .t-down{color:var(--lo)}
+
+    /* --- Moisture bars --- */
+    .m-section h3{margin-top:14px}
+    .m-tile{border:1px solid var(--border);border-radius:12px;padding:14px;background:#fff;text-align:center;margin-bottom:12px}
+    .m-row{display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:10px}
+    .m-label{font-size:13px;font-weight:800;color:var(--muted)}
     .m-bar{
-      position:relative;
-      height:14px;
-      width:100%;
-      border-radius:999px;
-      background:linear-gradient(to right, #b94c1d 0%, #e0b750 40%, #3fa7d6 100%);
+      position:relative;height:14px;border-radius:999px;overflow:hidden;
+      background:linear-gradient(to right,#b94c1d 0%,#e0b750 40%,#3fa7d6 100%);
       filter:contrast(1.1) brightness(1.05);
     }
     .m-marker{
-      position:absolute;
-      top:50%;
-      border-radius:50%;
-      transform:translate(-50%, -50%);
+      position:absolute;top:50%;border-radius:50%;transform:translate(-50%,-50%);
     }
     .m-marker.current{
-      width:14px; height:14px;
-      background:#0f172a;
-      border:2px solid #fff;
-      box-shadow:0 2px 4px rgba(0,0,0,0.2);
-      z-index:2;
+      width:14px;height:14px;background:#0f172a;border:2px solid #fff;
+      box-shadow:0 2px 4px rgba(0,0,0,0.2);z-index:2;
     }
     .m-marker.avg{
-      width:12px; height:12px;
-      background:#fff;
-      border:2px solid #0f172a;
-      z-index:1;
-      opacity:.95;
+      width:12px;height:12px;background:#fff;border:2px solid #0f172a;
+      opacity:.95;z-index:1;
     }
-    .m-labels{
-      display:flex;
-      justify-content:space-between;
-      margin-top:6px;
-      font-size:13px;
-      color:var(--muted);
-      font-weight:600;
-    }
+    .m-scale{display:flex;justify-content:space-between;gap:0;width:100%;font-size:12px;color:var(--muted);margin-top:8px}
+    .m-legend{margin-top:8px;display:flex;justify-content:center;gap:16px;font-size:12px;color:var(--muted)}
+    .m-legend .dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:-1px}
+    .m-legend .cur{background:#0f172a;box-shadow:0 0 0 2px #fff}
+    .m-legend .avg{display:inline-block;width:10px;height:10px;border:2px solid #0f172a;background:#fff;border-radius:50%}
+    .err{color:#b91c1c;font-weight:700}
   </style>
 </head>
 <body>
   <div class="card">
-    <h1>Soil Moisture</h1>
+    <h1 class="title">6&quot; Soil Temperature</h1>
     <div class="subtitle">Holdrege, NE</div>
-    <div class="note">Dryland corn stubble</div>
+    <div class="location-note">Dryland corn stubble</div>
 
-    <div class="moisture-section">
-      <h3 style="margin-bottom:8px;font-size:16px;font-weight:700;">6&quot; Depth</h3>
-      <div class="m-wrap">
-        <div class="m-bar" id="bar6"></div>
-        <div class="m-marker current" id="marker6-current"></div>
-        <div class="m-marker avg" id="marker6-avg"></div>
-      </div>
-      <div class="m-labels"><span>Dry</span><span>Wet</span></div>
-    </div>
-
-    <div class="moisture-section">
-      <h3 style="margin-bottom:8px;font-size:16px;font-weight:700;">22&quot; Depth</h3>
-      <div class="m-wrap">
-        <div class="m-bar" id="bar22"></div>
-        <div class="m-marker current" id="marker22-current"></div>
-        <div class="m-marker avg" id="marker22-avg"></div>
-      </div>
-      <div class="m-labels"><span>Dry</span><span>Wet</span></div>
-    </div>
+    <div id="content">Loading…</div>
   </div>
 
   <script>
     (async () => {
-      const url = '/.netlify/functions/soil-moisture?name=25x4gcityw&depths=6,22';
-      const res = await fetch(url);
-      const data = await res.json();
+      const loggerName = "25x4gcityw";
+      const tz = "America/Chicago";
+      const bust = Date.now();
+      const FUNC_BASE = "https://soiltemp.netlify.app";
 
-      // Expected JSON: { "6":{current:%, avg30:%}, "22":{current:%, avg30:%} }
+      const urlTemp  = `${FUNC_BASE}/.netlify/functions/soil-temp?name=${encodeURIComponent(loggerName)}&tz=${encodeURIComponent(tz)}&days=30&_=${bust}`;
+      const urlMoist = `${FUNC_BASE}/.netlify/functions/soil-moisture?name=${encodeURIComponent(loggerName)}&depths=6,22&days=30&_=${bust}`;
 
-      const config = {
-        6: { low: 24.08, high: 48.35 },
-        22: { low: 48.39, high: 54.66 }
+      const toF = c => Math.round((c * 9/5 + 32) * 10) / 10;
+      const deltaToF = dc => Math.round((dc * 9/5) * 10) / 10;
+      const signed = n => (n > 0 ? `+${n}` : `${n}`);
+
+      // Moisture windows confirmed from your sheet:
+      const MOIST_THRESH = {
+        6:  { low: 24.08, high: 48.35 },
+        22: { low: 48.39, high: 54.66 },
       };
+      function posInWindow(value, depthIn) {
+        const t = MOIST_THRESH[depthIn];
+        if (!t || !Number.isFinite(value)) return null;
+        const { low, high } = t;
+        const denom = Math.max(1e-6, high - low);
+        let x = (value - low) / denom;
+        x = Math.max(0, Math.min(1, x));
+        return x * 100; // %
+      }
 
-      const setMarker = (depth) => {
-        const d = data[depth];
-        const range = config[depth];
-        if (!d || !range) return;
-        const scale = (val) => {
-          const pct = ((val - range.low) / (range.high - range.low)) * 100;
-          return Math.max(0, Math.min(100, pct));
+      async function fetchJson(url){
+        const res = await fetch(url);
+        const ct = res.headers.get("content-type") || "";
+        if (!res.ok || !ct.includes("application/json")) {
+          const text = await res.text();
+          throw new Error(`HTTP ${res.status} at ${url}\n${text.slice(0,300)}`);
+        }
+        return res.json();
+      }
+
+      try{
+        const [data, moist] = await Promise.all([fetchJson(urlTemp), fetchJson(urlMoist)]);
+
+        const trendTile = (label, deltaC) => {
+          if (deltaC == null) {
+            return `<div class="trend-tile"><div class="t-label">${label}</div><div class="t-val">—</div></div>`;
+          }
+          const dF = deltaToF(deltaC);
+          const cls = dF >= 0 ? "t-up" : "t-down";
+          return `<div class="trend-tile"><div class="t-label">${label}</div><div class="t-val ${cls}">${signed(dF.toFixed(1))}°</div></div>`;
         };
 
-        document.getElementById(`marker${depth}-current`).style.left = `${scale(d.current)}%`;
-        document.getElementById(`marker${depth}-avg`).style.left = `${scale(d.avg30)}%`;
-      };
+        const contentEl = document.getElementById("content");
+        contentEl.innerHTML = `
+          <div class="grid">
+            <div class="tile current">
+              <div class="label">Current</div>
+              <div class="val">${toF(data.current.value)}°F</div>
+              <div class="time">${data.current.time}</div>
+            </div>
+            <div class="tile avg">
+              <div class="label">Average (today)</div>
+              <div class="val">${data.avg !== null ? toF(data.avg) : "—"}°F</div>
+              <div class="time">${data.count ?? 0} readings</div>
+            </div>
+          </div>
 
-      setMarker(6);
-      setMarker(22);
+          <div class="grid">
+            <div class="tile high">
+              <div class="label">High</div>
+              <div class="val">${data.high ? toF(data.high.value) : "—"}°F</div>
+              <div class="time">${data.high ? data.high.time : "—"}</div>
+            </div>
+            <div class="tile low">
+              <div class="label">Low</div>
+              <div class="val">${data.low ? toF(data.low.value) : "—"}°F</div>
+              <div class="time">${data.low ? data.low.time : "—"}</div>
+            </div>
+          </div>
+
+          <div class="section">
+            <h3>Trends</h3>
+            <div class="trend-grid">
+              ${trendTile("7-day",  data.trend7d?.delta)}
+              ${trendTile("30-day", data.trend30d?.delta)}
+            </div>
+          </div>
+
+          <div class="section m-section">
+            <h3>Soil moisture</h3>
+            <div id="moisture"></div>
+          </div>
+        `;
+
+        // Moisture visuals
+        const cont = document.getElementById("moisture");
+        if (moist.error || !moist.depths?.length) {
+          cont.innerHTML = `<div class="err">${moist.error || "No moisture data."}</div>`;
+        } else {
+          cont.innerHTML = moist.depths.map(d => {
+            const v = Number.isFinite(d.vwc)   ? d.vwc   : null;
+            const a = Number.isFinite(d.avg30) ? d.avg30 : null;
+
+            const posCur = v !== null ? posInWindow(v, d.depthIn) : null;
+            const posAvg = a !== null ? posInWindow(a, d.depthIn) : null;
+
+            return `
+              <div class="m-tile">
+                <div class="m-row"><div class="m-label">${d.mappedDepthIn}&Prime; soil moisture</div></div>
+                <div class="m-bar">
+                  ${posAvg!==null ? `<div class="m-marker avg"     style="left:${posAvg}%;"></div>` : ""}
+                  ${posCur!==null ? `<div class="m-marker current" style="left:${posCur}%;"></div>` : ""}
+                </div>
+                <div class="m-scale"><span>Dry</span><span>Wet</span></div>
+                <div class="m-legend">
+                  <span><span class="dot cur"></span>Current</span>
+                  <span><span class="avg"></span>30-day avg</span>
+                </div>
+              </div>
+            `;
+          }).join("");
+        }
+
+      } catch (e) {
+        document.getElementById("content").textContent = "Fetch error: " + e.message;
+      }
     })();
   </script>
 </body>
