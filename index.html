@@ -3,79 +3,165 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Soil Insights – Holdrege, NE</title>
+  <title>Soil Insights – Acre Insights, Holdrege NE</title>
 
   <!-- Inter font -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
 
   <style>
-    :root{
-      --page:#f7f9fc; --card:#fff; --border:#e6ecf5; --shadow:rgba(15,23,42,.06);
-      --text:#0f172a; --muted:#5b6b80;
-      --ok:#33d17a; --hi:#ff5577; --lo:#4ea3ff; --avg:#ffbf47;
-    }
-    *{box-sizing:border-box}
-    body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--page);color:var(--text);font-family:'Inter',system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
-    .card{width:min(92vw,560px);background:var(--card);border:1px solid var(--border);box-shadow:0 8px 24px var(--shadow);border-radius:14px;padding:24px;text-align:center}
-
-    .title{font-weight:800;font-size:26px;margin:0 0 2px}
-    .subtitle{font-size:16px;font-weight:600;opacity:.9;margin:0 0 2px}
-    .location-note{font-size:13px;color:var(--muted);margin:0 0 16px}
-
-    .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px}
-    .tile{background:#fff;border:1px solid var(--border);border-radius:12px;padding:12px 12px 10px;text-align:center}
-    .label{font-size:12px;font-weight:700;color:var(--muted);margin-bottom:4px}
-    .val{font-size:28px;font-weight:900;margin:2px 0 0}
-    .time{font-size:12px;color:var(--muted);margin-top:4px}
-    .current .val{color:var(--ok)} .high .val{color:var(--hi)} .low .val{color:var(--lo)} .avg .val{color:var(--avg)}
-
-    .section{margin-top:6px}
-    .trend-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-    .trend-tile{background:#fff;border:1px solid var(--border);border-radius:12px;padding:12px}
-    .t-label{font-size:12px;font-weight:700;color:var(--muted);margin-bottom:6px}
-    .t-val{font-size:24px;font-weight:900;line-height:1.1}
-    .t-up{color:var(--avg)} .t-down{color:var(--lo)}
-
-    /* Divider between sections */
-    .divider{
-      margin:18px 0 16px;
-      border:0;
-      height:1px;
-      background:linear-gradient(to right, transparent, #e6ecf5, transparent);
+    :root {
+      --page: #f7f9fc;
+      --card: #ffffff;
+      --border: #e6ecf5;
+      --shadow: rgba(15, 23, 42, 0.06);
+      --text: #0f172a;
+      --muted: #5b6b80;
+      --ok: #33d17a;
+      --hi: #ff5577;
+      --lo: #4ea3ff;
+      --avg: #ffbf47;
     }
 
-    /* --- Moisture bars --- */
-    .m-section h3{margin-top:14px}
-    .m-tile{border:1px solid var(--border);border-radius:12px;padding:14px;background:#fff;text-align:center;margin-bottom:12px}
-    .m-row{display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:10px}
-    .m-label{font-size:13px;font-weight:800;color:var(--muted)}
-    .m-bar{
-      position:relative;height:14px;border-radius:999px;overflow:hidden;
-      background:linear-gradient(to right,#b94c1d 0%,#e0b750 40%,#3fa7d6 100%);
-      filter:contrast(1.1) brightness(1.05);
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--page);
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
     }
-    .m-marker{
-      position:absolute;top:50%;border-radius:50%;transform:translate(-50%,-50%);
-    }
-    .m-marker.current{
-      width:14px;height:14px;background:#0f172a;border:2px solid #fff;
-      box-shadow:0 2px 4px rgba(0,0,0,0.2);z-index:2;
-    }
-    .m-marker.avg{
-      width:12px;height:12px;background:#fff;border:2px solid #0f172a;
-      opacity:.95;z-index:1;
-    }
-    .m-scale{display:flex;justify-content:space-between;width:100%;font-size:12px;color:var(--muted);margin-top:8px}
-    .m-legend{margin-top:8px;display:flex;justify-content:center;gap:18px;font-size:12px;color:var(--muted)}
-    .m-legend .dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:-1px}
-    .m-legend .cur{background:#0f172a;box-shadow:0 0 0 2px #fff}
-    .m-legend .avg{display:inline-block;width:10px;height:10px;border:2px solid #0f172a;background:#fff;border-radius:50%;margin-right:6px}
-    .err{color:#b91c1c;font-weight:700}
 
-    .footnote{
-      margin-top:14px;
-      font-size:11px;
-      color:#6b7280;
+    .card {
+      width: min(92vw, 560px);
+      background: var(--card);
+      border: 1px solid var(--border);
+      box-shadow: 0 8px 24px var(--shadow);
+      border-radius: 14px;
+      padding: 24px;
+      text-align: center;
+    }
+
+    .title { font-weight: 800; font-size: 26px; margin: 0 0 2px; }
+    .subtitle { font-size: 16px; font-weight: 600; opacity: .9; margin: 0 0 2px; }
+    .location-note { font-size: 13px; color: var(--muted); margin: 0 0 16px; }
+
+    .divider {
+      border-top: 1px solid var(--border);
+      margin: 20px 0 16px;
+    }
+
+    h2 {
+      font-size: 18px;
+      font-weight: 800;
+      margin: 4px 0 12px;
+    }
+
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px; }
+    .tile {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px 12px 10px;
+      text-align: center;
+    }
+    .label { font-size: 12px; font-weight: 700; color: var(--muted); margin-bottom: 4px; }
+    .val { font-size: 28px; font-weight: 900; margin: 2px 0 0; }
+    .time { font-size: 12px; color: var(--muted); margin-top: 4px; }
+    .current .val { color: var(--ok); }
+    .high .val { color: var(--hi); }
+    .low .val { color: var(--lo); }
+    .avg .val { color: var(--avg); }
+
+    .trend-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 6px; }
+    .trend-tile {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px;
+    }
+    .t-label { font-size: 12px; font-weight: 700; color: var(--muted); margin-bottom: 6px; }
+    .t-val { font-size: 24px; font-weight: 900; line-height: 1.1; }
+    .t-up { color: var(--avg); }
+    .t-down { color: var(--lo); }
+
+    /* Moisture section */
+    .m-tile {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px;
+      text-align: left;
+      margin-bottom: 12px;
+    }
+    .m-label { font-weight: 700; font-size: 13px; margin-bottom: 6px; }
+    .m-bar {
+      height: 14px;
+      border-radius: 8px;
+      background: linear-gradient(to right, #f1c232, #33d17a, #4ea3ff);
+      position: relative;
+    }
+    .m-marker {
+      position: absolute;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      border-radius: 50%;
+    }
+    .m-marker.current { background: #000; width: 14px; height: 14px; }
+    .m-marker.avg { background: #fff; border: 2px solid #000; width: 12px; height: 12px; }
+    .m-scale {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 8px;
+    }
+    .m-legend {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 16px;
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 8px;
+    }
+    .m-legend span {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .footnote {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 10px;
+    }
+
+    /* --- Compact mobile mode --- */
+    @media (max-width: 420px) {
+      .card{ padding:16px; }
+      .title{ font-size:22px; margin-bottom:0 }
+      .subtitle{ font-size:14px; margin-bottom:0 }
+      .location-note{ font-size:12px; margin-bottom:10px }
+      h2{ font-size:16px !important; margin-top:12px !important; margin-bottom:6px !important; }
+      .grid{ gap:8px; margin-bottom:10px }
+      .tile{ padding:10px 10px 8px; border-radius:10px }
+      .label{ font-size:11px; margin-bottom:2px }
+      .val{ font-size:24px; line-height:1; margin-top:0 }
+      .time{ font-size:11px; margin-top:2px }
+      .trend-grid{ gap:8px }
+      .trend-tile{ padding:10px; border-radius:10px }
+      .t-label{ font-size:11px; margin-bottom:4px }
+      .t-val{ font-size:20px }
+      .divider{ margin:12px 0 10px }
+      .m-tile{ padding:12px; border-radius:10px; margin-bottom:10px }
+      .m-bar{ height:10px }
+      .m-marker.current{ width:12px; height:12px }
+      .m-marker.avg{ width:10px; height:10px }
+      .m-scale{ font-size:11px; margin-top:6px }
+      .m-legend{ gap:12px; font-size:11px }
+      .footnote{ display:none }
     }
   </style>
 </head>
@@ -85,15 +171,8 @@
     <div class="subtitle">Holdrege, NE</div>
     <div class="location-note">Dryland corn stubble</div>
 
-    <h2 style="margin-top:18px;margin-bottom:8px;font-size:18px;font-weight:800;color:#0f172a;">Temperature</h2>
     <div id="content">Gathering the latest data…</div>
-
-    <hr class="divider" />
-
-    <h2 style="margin-top:8px;margin-bottom:8px;font-size:18px;font-weight:800;color:#0f172a;">Moisture</h2>
-    <div id="moisture">Gathering the latest data…</div>
-
-    <div class="footnote">Note: Data refreshes every 3 hours throughout the day.</div>
+    <div class="footnote">Data refreshes automatically every 3 hours throughout the day.</div>
   </div>
 
   <script>
@@ -101,117 +180,74 @@
       const loggerName = "25x4gcityw";
       const tz = "America/Chicago";
       const bust = Date.now();
-      const FUNC_BASE = "https://soiltemp.netlify.app";
 
-      const urlTemp  = `${FUNC_BASE}/.netlify/functions/soil-temp?name=${encodeURIComponent(loggerName)}&tz=${encodeURIComponent(tz)}&days=30&_=${bust}`;
-      const urlMoist = `${FUNC_BASE}/.netlify/functions/soil-moisture?name=${encodeURIComponent(loggerName)}&depths=6,22&days=30&_=${bust}`;
+      const tempUrl = `/.netlify/functions/soil-temp?name=${loggerName}&tz=${encodeURIComponent(tz)}&days=30&_=${bust}`;
+      const moistUrl = `/.netlify/functions/soil-moisture?name=${loggerName}&depths=6,22&_=${bust}`;
 
       const toF = c => Math.round((c * 9/5 + 32) * 10) / 10;
       const deltaToF = dc => Math.round((dc * 9/5) * 10) / 10;
       const signed = n => (n > 0 ? `+${n}` : `${n}`);
 
-      // Moisture windows confirmed:
-      const MOIST_THRESH = {
-        6:  { low: 24.08, high: 48.35 },
-        22: { low: 48.39, high: 54.66 },
-      };
-      function posInWindow(value, depthIn) {
-        const t = MOIST_THRESH[depthIn];
-        if (!t || !Number.isFinite(value)) return null;
-        const { low, high } = t;
-        const denom = Math.max(1e-6, high - low);
-        let x = (value - low) / denom;
-        x = Math.max(0, Math.min(1, x));
-        return x * 100;
-      }
+      try {
+        const [tempRes, moistRes] = await Promise.all([fetch(tempUrl), fetch(moistUrl)]);
+        const [temp, moist] = await Promise.all([tempRes.json(), moistRes.json()]);
 
-      async function fetchJson(url){
-        const res = await fetch(url);
-        const ct = res.headers.get("content-type") || "";
-        if (!res.ok || !ct.includes("application/json")) {
-          const text = await res.text();
-          throw new Error(`HTTP ${res.status} at ${url}\n${text.slice(0,300)}`);
-        }
-        return res.json();
-      }
-
-      try{
-        const [data, moist] = await Promise.all([fetchJson(urlTemp), fetchJson(urlMoist)]);
-
-        // Build trend tiles with explicit labels (no "Trends" header)
         const trendTile = (label, deltaC) => {
-          if (deltaC == null) {
+          if (deltaC === null || deltaC === undefined)
             return `<div class="trend-tile"><div class="t-label">${label}</div><div class="t-val">—</div></div>`;
-          }
           const dF = deltaToF(deltaC);
           const cls = dF >= 0 ? "t-up" : "t-down";
           return `<div class="trend-tile"><div class="t-label">${label}</div><div class="t-val ${cls}">${signed(dF.toFixed(1))}°</div></div>`;
         };
 
-        // Temperature content
-        const contentEl = document.getElementById("content");
-        contentEl.innerHTML = `
-          <div class="grid">
-            <div class="tile current">
-              <div class="label">Current</div>
-              <div class="val">${toF(data.current.value)}°F</div>
-              <div class="time">${data.current.time}</div>
-            </div>
-            <div class="tile avg">
-              <div class="label">Average (today)</div>
-              <div class="val">${data.avg !== null ? toF(data.avg) : "—"}°F</div>
-              <div class="time">${data.count ?? 0} readings</div>
-            </div>
-          </div>
+        const moistureBar = (depthLabel, current, avg, low, high) => {
+          const pct = v => ((v - low) / (high - low)) * 100;
+          const curPos = Math.min(100, Math.max(0, pct(current)));
+          const avgPos = Math.min(100, Math.max(0, pct(avg)));
 
-          <div class="grid">
-            <div class="tile high">
-              <div class="label">High</div>
-              <div class="val">${data.high ? toF(data.high.value) : "—"}°F</div>
-              <div class="time">${data.high ? data.high.time : "—"}</div>
-            </div>
-            <div class="tile low">
-              <div class="label">Low</div>
-              <div class="val">${data.low ? toF(data.low.value) : "—"}°F</div>
-              <div class="time">${data.low ? data.low.time : "—"}</div>
-            </div>
-          </div>
-
-          <div class="trend-grid">
-            ${trendTile("7-day trend",  data.trend7d?.delta)}
-            ${trendTile("30-day trend", data.trend30d?.delta)}
-          </div>
-        `;
-
-        // Moisture content
-        const cont = document.getElementById("moisture");
-        if (moist.error || !moist.depths?.length) {
-          cont.innerHTML = `<div class="err">${moist.error || "No moisture data."}</div>`;
-        } else {
-          cont.innerHTML = moist.depths.map(d => {
-            const v = Number.isFinite(d.vwc)   ? d.vwc   : null;
-            const a = Number.isFinite(d.avg30) ? d.avg30 : null;
-
-            const posCur = v !== null ? posInWindow(v, d.depthIn) : null;
-            const posAvg = a !== null ? posInWindow(a, d.depthIn) : null;
-
-            return `
-              <div class="m-tile">
-                <div class="m-row"><div class="m-label">${Math.round(d.mappedDepthIn)}″ depth</div></div>
-                <div class="m-bar">
-                  ${posAvg!==null ? `<div class="m-marker avg"     style="left:${posAvg}%;"></div>` : ""}
-                  ${posCur!==null ? `<div class="m-marker current" style="left:${posCur}%;"></div>` : ""}
-                </div>
-                <div class="m-scale"><span>Dry</span><span>Wet</span></div>
-                <div class="m-legend">
-                  <span><span class="dot cur"></span>Current</span>
-                  <span><span class="avg"></span>30-day avg</span>
-                </div>
+          return `
+            <div class="m-tile">
+              <div class="m-label">${depthLabel} soil moisture</div>
+              <div class="m-bar">
+                <div class="m-marker current" style="left:${curPos}%"></div>
+                <div class="m-marker avg" style="left:${avgPos}%"></div>
               </div>
-            `;
-          }).join("");
-        }
+              <div class="m-scale"><span>Dry</span><span>Wet</span></div>
+              <div class="m-legend">
+                <span><div class="m-marker current"></div> Current</span>
+                <span><div class="m-marker avg"></div> 30-day avg</span>
+              </div>
+            </div>
+          `;
+        };
 
+        document.getElementById("content").innerHTML = `
+          <h2>Temperature</h2>
+          <div class="grid">
+            <div class="tile current"><div class="label">Current</div><div class="val">${toF(temp.current.value)}°F</div><div class="time">${temp.current.time}</div></div>
+            <div class="tile avg"><div class="label">Average (today)</div><div class="val">${toF(temp.avg)}°F</div><div class="time">${temp.count} readings</div></div>
+          </div>
+          <div class="grid">
+            <div class="tile high"><div class="label">High</div><div class="val">${toF(temp.high.value)}°F</div><div class="time">${temp.high.time}</div></div>
+            <div class="tile low"><div class="label">Low</div><div class="val">${toF(temp.low.value)}°F</div><div class="time">${temp.low.time}</div></div>
+          </div>
+          <div class="trend-grid">
+            ${trendTile("7-day trend", temp.trend7d?.delta)}
+            ${trendTile("30-day trend", temp.trend30d?.delta)}
+          </div>
+
+          <div class="divider"></div>
+          <h2>Moisture</h2>
+          ${moist.depths.map(d =>
+            moistureBar(
+              `${d.depthIn}″`,
+              d.vwc,
+              d.avg30,
+              d.depthIn === 6 ? 20 : 48,
+              d.depthIn === 6 ? 47 : 55
+            )
+          ).join("")}
+        `;
       } catch (e) {
         document.getElementById("content").textContent = "Fetch error: " + e.message;
       }
