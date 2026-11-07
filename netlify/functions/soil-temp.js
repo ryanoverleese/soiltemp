@@ -9,7 +9,8 @@ exports.handler = async (event) => {
       headers: {
         "access-control-allow-origin": "*",
         "access-control-allow-methods": "GET, OPTIONS",
-        "access-control-allow-headers": "Content-Type"
+        "access-control-allow-headers": "Content-Type",
+        "x-robots-tag": "noindex, nofollow"
       },
       body: ""
     };
@@ -154,7 +155,8 @@ function json(status, body) {
     headers: {
       "content-type": "application/json",
       "access-control-allow-origin": "*",
-      "access-control-allow-methods": "GET, OPTIONS"
+      "access-control-allow-methods": "GET, OPTIONS",
+      "x-robots-tag": "noindex, nofollow"
     },
     body: JSON.stringify(body)
   };

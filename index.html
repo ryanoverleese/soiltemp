@@ -4,6 +4,12 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Soil Insights – Acre Insights, Holdrege NE</title>
+  <meta name="description" content="Current soil temperature and moisture for the Holdrege, NE dryland corn stubble field." />
+  <meta name="robots" content="noindex, nofollow" />
+  <link rel="icon" href="/favicon.ico" sizes="any" />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <link rel="icon" href="/favicon-32.png" type="image/png" sizes="32x32" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
 
   <!-- Inter font -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
@@ -12,7 +18,7 @@
     :root {
       --page:#f7f9fc; --card:#ffffff; --border:#e6ecf5; --shadow:rgba(15,23,42,.06);
       --text:#0f172a; --muted:#5b6b80;
-      --ok:#33d17a; --hi:#ff5577; --lo:#4ea3ff; --avg:#ffbf47;
+      --ok:#29a762; --hi:#ff5577; --lo:#4896eb; --avg:#ba8b34;
     }
 
     *{ box-sizing:border-box; }
@@ -54,6 +60,7 @@
 
     /* --- Moisture tiles --- */
     .m-tile{
+      position:relative;
       background:#fff; border:1px solid var(--border); border-radius:12px;
       padding:12px; /* tighter */
       text-align:left; margin-bottom:10px;
@@ -81,6 +88,10 @@
     .legend-dot.avg{ background:#fff; border:2px solid #0f172a }
 
     .footnote{ font-size:11px; color:#6b7280; margin-top:8px }
+    .sr-only{
+      position:absolute; width:1px; height:1px; padding:0; margin:-1px;
+      overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0;
+    }
 
     /* Compact mobile mode */
     @media (max-width:420px){
@@ -100,21 +111,27 @@
   </style>
 </head>
 <body>
-  <div class="card">
+  <main class="card">
     <h1 class="title">Soil Insights</h1>
     <div class="subtitle">Holdrege, NE</div>
     <div class="location-note">Dryland corn stubble</div>
+    <noscript>
+      <style>
+        #temperature-heading, #content, .divider, #moisture-heading, #moisture, .footnote { display: none; }
+      </style>
+      <p>Soil readings need JavaScript. Enable JavaScript and reload the page.</p>
+    </noscript>
 
-    <h2>Temperature</h2>
-    <div id="content">Gathering the latest data…</div>
+    <h2 id="temperature-heading">Temperature</h2>
+    <div id="content" role="status" aria-live="polite" aria-busy="true" aria-labelledby="temperature-heading">Gathering the latest data…</div>
 
     <div class="divider"></div>
 
-    <h2>Moisture</h2>
-    <div id="moisture">Gathering the latest data…</div>
+    <h2 id="moisture-heading">Moisture</h2>
+    <div id="moisture" role="status" aria-live="polite" aria-busy="true" aria-labelledby="moisture-heading">Gathering the latest data…</div>
 
     <div class="footnote">Data refreshes automatically every 3 hours throughout the day.</div>
-  </div>
+  </main>
 
   <script>
     (async () => {
@@ -140,10 +157,25 @@
         return Math.max(0, Math.min(100, pct));
       }
 
-      try{
-        const [tRes, mRes] = await Promise.all([fetch(tempUrl), fetch(moistUrl)]);
-        const [temp, moist] = await Promise.all([tRes.json(), mRes.json()]);
+      const contentEl = document.getElementById("content");
+      const moistureEl = document.getElementById("moisture");
+      const unavailable = (el, label) => {
+        el.setAttribute("aria-busy", "false");
+        el.textContent = label + " is unavailable right now. Reload the page to try again.";
+      };
 
+      try{
+        const [tSettled, mSettled] = await Promise.allSettled([fetch(tempUrl), fetch(moistUrl)]);
+
+        if (tSettled.status !== "fulfilled") {
+          unavailable(contentEl, "Soil temperature");
+        } else {
+          try {
+            const tRes = tSettled.value;
+            const temp = await tRes.json();
+            if (!tRes.ok || temp == null || temp.current == null || temp.current.value == null) {
+              unavailable(contentEl, "Soil temperature");
+            } else {
         // --- Temperature ---
         const trendTile = (label, deltaC) => {
           if (deltaC == null) return `<div class="trend-tile"><div class="t-label">${label}</div><div class="t-val">—</div></div>`;
@@ -151,7 +183,7 @@
           return `<div class="trend-tile"><div class="t-label">${label}</div><div class="t-val ${cls}">${signed(dF.toFixed(1))}°</div></div>`;
         };
 
-        document.getElementById("content").innerHTML = `
+        contentEl.innerHTML = `
           <div class="grid">
             <div class="tile current">
               <div class="label">Current</div>
@@ -183,37 +215,59 @@
             ${trendTile("30-day trend", temp.trend30d?.delta)}
           </div>
         `;
+            contentEl.setAttribute("aria-busy", "false");
+            }
+          } catch (e) {
+            unavailable(contentEl, "Soil temperature");
+          }
+        }
 
-        // --- Moisture ---
-        const mEl = document.getElementById("moisture");
-        if (moist.error || !moist.depths?.length){
-          mEl.innerHTML = `<div class="tile" style="text-align:center">No moisture data.</div>`;
+        if (mSettled.status !== "fulfilled") {
+          unavailable(moistureEl, "Soil moisture");
         } else {
-          mEl.innerHTML = moist.depths.map(d => {
+          try {
+          const mRes = mSettled.value;
+          const moist = await mRes.json();
+          if (!mRes.ok || moist == null || moist.error) {
+            unavailable(moistureEl, "Soil moisture");
+          } else if (!moist.depths?.length) {
+            moistureEl.setAttribute("aria-busy", "false");
+            moistureEl.innerHTML = `<div class="tile" style="text-align:center">No moisture data.</div>`;
+          } else {
+            moistureEl.innerHTML = moist.depths.map(d => {
             const cur = Number.isFinite(d.vwc)   ? d.vwc   : null;
             const avg = Number.isFinite(d.avg30) ? d.avg30 : null;
             const leftCur = cur != null ? scaleToBar(cur, d.depthIn) : null;
             const leftAvg = avg != null ? scaleToBar(avg, d.depthIn) : null;
+            const curText = cur != null ? `${cur}%` : "unavailable";
+            const avgText = avg != null ? `${avg}%` : "unavailable";
 
             return `
               <div class="m-tile">
                 <div class="m-label">${Math.round(d.mappedDepthIn)}″ depth</div>
-                <div class="m-bar">
+                <p class="sr-only">Current moisture ${curText}. 30-day average ${avgText}.</p>
+                <div class="m-bar" aria-hidden="true">
                   ${leftAvg!=null ? `<div class="m-marker avg" style="left:${leftAvg}%;"></div>` : ""}
                   ${leftCur!=null ? `<div class="m-marker current" style="left:${leftCur}%;"></div>` : ""}
                 </div>
                 <div class="m-scale"><span>Dry</span><span>Wet</span></div>
-                <div class="m-legend">
+                <div class="m-legend" aria-hidden="true">
                   <span class="legend-item"><span class="legend-dot cur"></span>Current</span>
                   <span class="legend-item"><span class="legend-dot avg"></span>30-day avg</span>
                 </div>
               </div>
             `;
           }).join("");
+            moistureEl.setAttribute("aria-busy", "false");
+          }
+          } catch (e) {
+            unavailable(moistureEl, "Soil moisture");
+          }
         }
 
       } catch(e){
-        document.getElementById("content").textContent = "Fetch error: " + e.message;
+        unavailable(contentEl, "Soil temperature");
+        unavailable(moistureEl, "Soil moisture");
       }
     })();
   </script>
